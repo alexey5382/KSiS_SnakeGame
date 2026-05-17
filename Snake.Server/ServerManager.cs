@@ -44,10 +44,11 @@ namespace Snake.Server
                     {
                         if (player.IsAuthenticated && !string.IsNullOrEmpty(player.RequestedTargetId))
                         {
-                            // === НОВОЕ: Перехват подключения к боту ===
+                            // === ИСПРАВЛЕНО: Перехват подключения к боту ===
                             if (player.RequestedTargetId == "BOT_ID")
                             {
-                                // Создаем игру с флагом isBotMatch = true (player2 будет null)
+                                player.IsHost = true; // <== ДАЕМ ИГРОКУ ПРАВА ХОСТА, ЧТОБЫ РАБОТАЛИ НАСТРОЙКИ
+
                                 var engine = new GameEngine(player, null, this, true);
                                 _ = engine.StartLoopAsync();
                                 _waitingPlayers.Remove(player);
@@ -75,16 +76,21 @@ namespace Snake.Server
 
                     var availableLobbies = _waitingPlayers
                         .Where(p => p.IsAuthenticated && p.IsHost)
-                        .Select(p => new PlayerInfo { Id = p.Id, Name = p.Name })
+                        .Select(p => new PlayerInfo
+                        {
+                            Id = p.Id,
+                            // Если имя лобби не задано - используем стандартный шаблон
+                            Name = string.IsNullOrEmpty(p.CustomLobbyName) ? $"Лобби {p.Name}" : p.CustomLobbyName
+                        })
                         .ToList();
 
                     // === НОВОЕ: Добавляем бота в самое начало списка комнат ===
                     availableLobbies.Insert(0, new PlayerInfo { Id = "BOT_ID", Name = "🤖 Бот-тренер" });
                     // ==========================================================
 
+
                     var topPlayersList = Auth.GetTopPlayers();
                     var menuState = new GameState { Status = GameStatus.MainMenu, AvailablePlayers = availableLobbies, TopPlayers = topPlayersList };
-                    var hostState = new GameState { Status = GameStatus.HostWaiting, TopPlayers = topPlayersList };
 
                     foreach (var player in _waitingPlayers)
                     {
@@ -93,7 +99,21 @@ namespace Snake.Server
                             var authState = new GameState { Status = GameStatus.AuthScreen, Message = player.AuthMessage };
                             _ = player.SendStateAsync(authState);
                         }
-                        else if (player.IsHost) _ = player.SendStateAsync(hostState);
+                        else if (player.IsHost)
+                        {
+                            // === ИСПРАВЛЕНО: Передаем полные данные хосту, когда он один в комнате ===
+                            var hostState = new GameState
+                            {
+                                Status = GameStatus.HostWaiting,
+                                TopPlayers = topPlayersList,
+                                Player1Name = player.Name,
+                                Player2Name = "Ожидание...",
+                                IsPlayer1Ready = player.IsReady,
+                                LobbyName = string.IsNullOrEmpty(player.CustomLobbyName) ? $"Лобби {player.Name}" : player.CustomLobbyName,
+                                Message = player.IsReady ? $"{player.Name} ожидает подключения игрока..." : string.Empty
+                            };
+                            _ = player.SendStateAsync(hostState);
+                        }
                         else _ = player.SendStateAsync(menuState);
                     }
                 }

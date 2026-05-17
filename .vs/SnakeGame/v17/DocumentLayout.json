@@ -7,8 +7,12 @@
       "RelativeMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|solutionrelative:snake.client\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\playerconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\playerconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.client\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|solutionrelative:snake.client\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{38181B0C-A0BD-410D-A2B5-43888E2FC1DA}|Snake.Shared\\Snake.Shared.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.shared\\gamemodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{38181B0C-A0BD-410D-A2B5-43888E2FC1DA}|Snake.Shared\\Snake.Shared.csproj|solutionrelative:snake.shared\\gamemodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\gameengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -19,24 +23,20 @@
       "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\servermanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.client\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|solutionrelative:snake.client\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{38181B0C-A0BD-410D-A2B5-43888E2FC1DA}|Snake.Shared\\Snake.Shared.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.shared\\gamemodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{38181B0C-A0BD-410D-A2B5-43888E2FC1DA}|Snake.Shared\\Snake.Shared.csproj|solutionrelative:snake.shared\\gamemodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\authmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\authmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\playerconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\playerconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.client\\networkclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D8BFB5CA-A884-0D58-C431-37C60E436375}|Snake.Client\\Snake.Client.csproj|solutionrelative:snake.client\\networkclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|d:\\users\\bsuir\\2y\\4s\\ksis\\\u043A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\snakemultiplayer\\snakemultiplayer\\snake.server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{715A9694-7BEE-4519-ADA3-CC2F915FF0C4}|Snake.Server\\Snake.Server.csproj|solutionrelative:snake.server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -50,13 +50,13 @@
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Client\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Snake.Client\\MainWindow.xaml.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Client\\MainWindow.xaml.cs",
               "RelativeToolTip": "Snake.Client\\MainWindow.xaml.cs",
-              "ViewState": "AgIAABMAAAAAAAAAAAAAACAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAABoBAAAAAAAAAAAuwDABAABFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-09T09:38:01.981Z",
               "IsPinned": true,
@@ -77,7 +77,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\Program.cs",
               "RelativeDocumentMoniker": "Snake.Server\\Program.cs",
@@ -90,44 +90,46 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 5,
               "Title": "AuthManager.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\AuthManager.cs",
               "RelativeDocumentMoniker": "Snake.Server\\AuthManager.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\AuthManager.cs",
               "RelativeToolTip": "Snake.Server\\AuthManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIcAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAI8AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-16T15:41:12.569Z"
+              "WhenOpened": "2026-05-16T15:41:12.569Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "ServerManager.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\ServerManager.cs",
               "RelativeDocumentMoniker": "Snake.Server\\ServerManager.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\ServerManager.cs",
               "RelativeToolTip": "Snake.Server\\ServerManager.cs",
-              "ViewState": "AgIAACQAAAAAAAAAAAAowGYAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAgwFoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-15T09:15:17.693Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 2,
               "Title": "GameModels.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Shared\\GameModels.cs",
               "RelativeDocumentMoniker": "Snake.Shared\\GameModels.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Shared\\GameModels.cs",
               "RelativeToolTip": "Snake.Shared\\GameModels.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAF4AAAABAAAAAAAAAA==",
+              "ViewState": "AgIAADAAAAAAAAAAAAA+wEEAAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-15T09:29:32.844Z"
+              "WhenOpened": "2026-05-15T09:29:32.844Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 7,
               "Title": "NetworkClient.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Client\\NetworkClient.cs",
               "RelativeDocumentMoniker": "Snake.Client\\NetworkClient.cs",
@@ -135,30 +137,31 @@
               "RelativeToolTip": "Snake.Client\\NetworkClient.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAC0AAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-09T09:37:37.763Z"
+              "WhenOpened": "2026-05-09T09:37:37.763Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "GameEngine.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\GameEngine.cs",
               "RelativeDocumentMoniker": "Snake.Server\\GameEngine.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\GameEngine.cs",
               "RelativeToolTip": "Snake.Server\\GameEngine.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAALAAAAAAAAAAAAAuwM0AAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-09T09:22:19.405Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 6,
               "Title": "PlayerConnection.cs",
               "DocumentMoniker": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\PlayerConnection.cs",
               "RelativeDocumentMoniker": "Snake.Server\\PlayerConnection.cs",
               "ToolTip": "D:\\Users\\Bsuir\\2y\\4s\\KSiS\\\u041A\u0443\u0440\u0441\u043E\u0432\u0430\u044F\\SnakeMultiplayer\\SnakeMultiplayer\\Snake.Server\\PlayerConnection.cs",
               "RelativeToolTip": "Snake.Server\\PlayerConnection.cs",
-              "ViewState": "AgIAAHsAAAAAAAAAAAAuwJEAAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAIAAAAAAAAAAAAAqwKYAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-09T09:22:04.04Z",
               "EditorCaption": ""

@@ -14,30 +14,29 @@ namespace Snake.Server
         private PlayerConnection _player2;
         private readonly ServerManager _manager;
 
-        // === ПЕРЕМЕННЫЕ ДЛЯ БОТА ===
         private readonly bool _isBotMatch;
         private Direction _botDirection = Direction.Left;
-        // ===========================
 
-        private const int GridWidth = 40;
-        private const int GridHeight = 30;
+        // ИСПРАВЛЕНИЕ НАСТРОЕК: Теперь это не константы
+        private int _gridWidth = 40;
+        private int _gridHeight = 30;
         private readonly Random _random = new Random();
 
-        private readonly double _cellsPerSecond = 4.0;
+        private double _cellsPerSecond = 4.0;
         private readonly int _countdownSeconds = 3;
         private DateTime? _gameStartTime;
 
-        private readonly int _maxNormalFood = 3;
-        private readonly int _maxGoldFood = 1;
-        private readonly int _maxPurpleFood = 2;
+        private int _maxNormalFood = 3;
+        private int _maxGoldFood = 1;
+        private int _maxPurpleFood = 2;
 
-        private readonly int _normalFoodEffect = 1;
-        private readonly int _goldFoodEffect = 3;
-        private readonly int _purpleFoodEffect = -1;
+        private int _normalFoodEffect = 1;
+        private int _goldFoodEffect = 3;
+        private int _purpleFoodEffect = -1;
 
-        private readonly int _normalFoodSpawnDelay = 0;
-        private readonly int _goldFoodSpawnDelay = 10;
-        private readonly int _purpleFoodSpawnDelay = 5;
+        private int _normalFoodSpawnDelay = 0;
+        private int _goldFoodSpawnDelay = 10;
+        private int _purpleFoodSpawnDelay = 5;
 
         private DateTime _lastNormalEatTime = DateTime.MinValue;
         private DateTime _lastGoldEatTime = DateTime.MinValue;
@@ -46,7 +45,6 @@ namespace Snake.Server
         private int _p1PendingGrowth = 0;
         private int _p2PendingGrowth = 0;
 
-        // ИЗМЕНЕНО: Добавлен параметр isBotMatch
         public GameEngine(PlayerConnection p1, PlayerConnection p2, ServerManager manager, bool isBotMatch = false)
         {
             _player1 = p1;
@@ -56,19 +54,40 @@ namespace Snake.Server
 
             _state.Status = GameStatus.RoomLobby;
             _state.Player1Name = _player1.Name;
+            _state.Player2Name = _isBotMatch ? "🤖 БОТ" : (_player2?.Name ?? "Ожидание...");
 
-            // Если игра с ботом, задаем ему имя вручную
-            _state.Player2Name = _isBotMatch ? "🤖 БОТ" : _player2.Name;
+            // ИСПРАВЛЕНИЕ: Дефолтное имя лобби с самого старта
+            _state.LobbyName = string.IsNullOrEmpty(_player1.CustomLobbyName) ? $"Лобби {_state.Player1Name}" : _player1.CustomLobbyName;
+            _state.Settings = new GameSettingsConfig();
+        }
+
+        private void ApplySettings(GameSettingsConfig config)
+        {
+            _state.Settings = config;
+            _gridWidth = config.GridWidth;
+            _gridHeight = config.GridHeight;
+            _cellsPerSecond = config.Speed;
+
+            _maxNormalFood = config.NormalFoodCount;
+            _normalFoodEffect = config.NormalFoodEffect;
+            _normalFoodSpawnDelay = config.NormalFoodDelay; // <== ИСПРАВЛЕНО
+
+            _maxGoldFood = config.GoldFoodCount;
+            _goldFoodEffect = config.GoldFoodEffect;
+            _goldFoodSpawnDelay = config.GoldFoodDelay;     // <== ИСПРАВЛЕНО
+
+            _maxPurpleFood = config.PurpleFoodCount;
+            _purpleFoodEffect = config.PurpleFoodEffect;
+            _purpleFoodSpawnDelay = config.PurpleFoodDelay; // <== ИСПРАВЛЕНО
         }
 
         public async Task StartLoopAsync()
         {
             int networkTickMs = 1000 / 30;
-            double moveIntervalMs = 1000.0 / _cellsPerSecond;
             DateTime lastMoveTime = DateTime.Now;
 
             var p1 = _player1;
-            var p2 = _player2; // Если это бот, переменная останется null, это нормально
+            var p2 = _player2;
 
             while (true)
             {
@@ -77,21 +96,31 @@ namespace Snake.Server
 
                 if (_player1 == null || (!_isBotMatch && _player2 == null)) break;
 
+                // Применяем настройки, если хост их изменил
+                if (_player1.PendingSettings != null)
+                {
+                    ApplySettings(_player1.PendingSettings);
+                    _player1.PendingSettings = null;
+                }
+
                 CheckDisconnections();
 
+                // Обработка ПОЛНОГО выхода (в меню)
                 if (_player1?.WantsToLeaveRoom == true || (!_isBotMatch && _player2?.WantsToLeaveRoom == true))
                 {
-                    bool p1Left = _player1?.WantsToLeaveRoom == true;
-                    string leaver = p1Left ? _state.Player1Name : _state.Player2Name;
-                    string winner = p1Left ? _state.Player2Name : _state.Player1Name;
+                    break;
+                }
 
-                    if (_state.Status == GameStatus.Playing)
+                // ИСПРАВЛЕНИЕ ВЫХОДА ВО ВРЕМЯ ИГРЫ: "Сдача" возвращает в локальное лобби
+                if (_player1?.WantsToRestart == true || (!_isBotMatch && _player2?.WantsToRestart == true))
+                {
+                    if (_state.Status == GameStatus.Playing || _state.Status == GameStatus.Countdown)
                     {
-                        EndGame($"{leaver} сдался. Победа {winner}!");
-                        if (_player1 != null) _player1.WantsToLeaveRoom = false;
-                        if (_player2 != null) _player2.WantsToLeaveRoom = false;
+                        bool p1Left = _player1?.WantsToRestart == true;
+                        string leaver = p1Left ? _state.Player1Name : _state.Player2Name;
+                        string winner = p1Left ? _state.Player2Name : _state.Player1Name;
+                        EndGame($"{leaver} вышел. Победа {winner}!");
                     }
-                    else break;
                 }
 
                 switch (_state.Status)
@@ -104,6 +133,7 @@ namespace Snake.Server
                         if (_gameStartTime == null) _gameStartTime = DateTime.Now;
                         _state.MatchTimer = (int)(DateTime.Now - _gameStartTime.Value).TotalSeconds;
 
+                        double moveIntervalMs = 1000.0 / _cellsPerSecond;
                         if ((DateTime.Now - lastMoveTime).TotalMilliseconds >= moveIntervalMs)
                         {
                             UpdateGameLogic();
@@ -112,30 +142,107 @@ namespace Snake.Server
                         break;
 
                     case GameStatus.GameOver:
-                        bool p1Ready = _player1 == null || _player1.WantsToRestart;
-                        // Бот всегда готов к перезапуску
-                        bool p2Ready = _isBotMatch || (_player2 == null || _player2.WantsToRestart);
+                        // Синхронизируем флаги готовности
+                        _state.IsPlayer1Ready = _player1?.IsReady == true;
+                        _state.IsPlayer2Ready = _isBotMatch ? _state.IsPlayer1Ready : (_player2?.IsReady == true);
 
-                        if (_player1 != null && (_isBotMatch || _player2 != null))
-                        {
-                            if (_player1.WantsToRestart && !_isBotMatch && !_player2.WantsToRestart)
-                                _state.Message = $"{_player1.Name} готов выйти. Ждем {_player2.Name}...";
-                            else if (!_isBotMatch && _player2.WantsToRestart && !_player1.WantsToRestart)
-                                _state.Message = $"{_player2.Name} готов выйти. Ждем {_player1.Name}...";
-                        }
+                        bool p1Lobby = _player1 != null && _player1.WantsToRestart;
+                        bool p2Lobby = !_isBotMatch && _player2 != null && _player2.WantsToRestart;
 
-                        if (p1Ready && p2Ready && (_player1 != null || _player2 != null))
+                        bool p1Ready = _player1 != null && _player1.IsReady;
+                        bool p2Ready = _isBotMatch || (_player2 != null && _player2.IsReady);
+
+                        // ИСПРАВЛЕНИЕ: Сбрасываем лобби, только если ОБА игрока вышли (или это матч с ботом)
+                        if (p1Lobby && (p2Lobby || _isBotMatch))
                         {
                             ResetToRoomLobby();
+                        }
+                        // Если Игрок 2 нажал "В лобби", а Игрок 1 уже ждет в лобби
+                        else if (p2Lobby && p1Lobby)
+                        {
+                            ResetToRoomLobby();
+                        }
+                        else if (p1Ready && p2Ready)
+                        {
+                            // Перезапуск матча при обоюдном согласии
+                            _state.Snake1.Clear();
+                            _state.Snake2.Clear();
+                            _state.Food.Clear();
+                            _gameStartTime = null;
+                            _state.MatchTimer = 0;
+
+                            _player1.IsReady = false;
+                            if (!_isBotMatch) _player2.IsReady = false;
+
+                            _player1.CurrentDirection = Direction.Right;
+                            if (!_isBotMatch) _player2.CurrentDirection = Direction.Left;
+                            else _botDirection = Direction.Left;
+
+                            int spawnY = _gridHeight / 2;
+                            int spawnX1 = _gridWidth / 4;
+                            int spawnX2 = (_gridWidth * 3) / 4;
+
+                            _state.Snake1.AddRange(new[] { new Position(spawnX1, spawnY), new Position(spawnX1 - 1, spawnY), new Position(spawnX1 - 2, spawnY) });
+                            _state.Snake2.AddRange(new[] { new Position(spawnX2, spawnY), new Position(spawnX2 + 1, spawnY), new Position(spawnX2 + 2, spawnY) });
+
+                            _state.IsPlayer1Ready = false;
+                            _state.IsPlayer2Ready = false;
+
+                            _state.Status = GameStatus.Countdown;
+                            _ = RunCountdownAsync();
+                        }
+                        else
+                        {
+                            // ИСПРАВЛЕНИЕ: Формируем служебные сообщения о выходе в лобби
+                            if (p1Lobby && !p2Lobby && !_isBotMatch)
+                            {
+                                _state.Message = $"Игрок {_state.Player1Name} вышел в лобби.";
+                            }
+                            else if (p2Lobby && !p1Lobby)
+                            {
+                                _state.Message = $"Игрок {_state.Player2Name} вышел в лобби.";
+                            }
+                            else if (p1Ready && !p2Ready)
+                            {
+                                _state.Message = $"Ожидание игрока {_state.Player2Name}...";
+                            }
+                            else if (p2Ready && !p1Ready)
+                            {
+                                _state.Message = $"Ожидание игрока {_state.Player1Name}...";
+                            }
+                            else
+                            {
+                                _state.Message = "Матч завершен";
+                            }
                         }
                         break;
                 }
 
+                _state.Player1Name = _player1?.Name ?? "Отключен";
+                _state.Player2Name = _isBotMatch ? "🤖 БОТ" : (_player2?.Name ?? "Ожидание...");
+                _state.LobbyName = _player1?.CustomLobbyName ?? $"Лобби {_state.Player1Name}";
+
                 _state.TopPlayers = _manager.Auth.GetTopPlayers();
 
-                if (_player1?.IsConnected == true) await _player1.SendStateAsync(_state);
-                // Отправляем пакет второму игроку, только если это не бот
-                if (!_isBotMatch && _player2?.IsConnected == true) await _player2.SendStateAsync(_state);
+                if (_player1?.IsConnected == true)
+                {
+                    if (_state.Status == GameStatus.GameOver && _player1.WantsToRestart)
+                    {
+                        var p1State = new GameState { Status = GameStatus.RoomLobby, Player1Name = _state.Player1Name, Player2Name = _state.Player2Name, IsPlayer1Ready = _player1.IsReady, IsPlayer2Ready = false, TopPlayers = _state.TopPlayers, LobbyName = _state.LobbyName, Settings = _state.Settings, Message = _player1.IsReady ? $"{_player1.Name} ожидает..." : string.Empty };
+                        await _player1.SendStateAsync(p1State);
+                    }
+                    else await _player1.SendStateAsync(_state);
+                }
+
+                if (!_isBotMatch && _player2?.IsConnected == true)
+                {
+                    if (_state.Status == GameStatus.GameOver && _player2.WantsToRestart)
+                    {
+                        var p2State = new GameState { Status = GameStatus.RoomLobby, Player1Name = _state.Player1Name, Player2Name = _state.Player2Name, IsPlayer1Ready = false, IsPlayer2Ready = _player2.IsReady, TopPlayers = _state.TopPlayers, LobbyName = _state.LobbyName, Settings = _state.Settings, Message = _player2.IsReady ? $"{_player2.Name} ожидает..." : string.Empty };
+                        await _player2.SendStateAsync(p2State);
+                    }
+                    else await _player2.SendStateAsync(_state);
+                }
 
                 await Task.Delay(networkTickMs);
             }
@@ -163,7 +270,6 @@ namespace Snake.Server
         private void HandleRoomLobby()
         {
             _state.IsPlayer1Ready = _player1?.IsReady == true;
-            // Бот автоматически "нажимает готовность", когда готов игрок
             _state.IsPlayer2Ready = _isBotMatch ? _state.IsPlayer1Ready : _player2?.IsReady == true;
 
             if (_state.IsPlayer1Ready && !_state.IsPlayer2Ready)
@@ -179,9 +285,21 @@ namespace Snake.Server
                 if (!_isBotMatch) _player2.CurrentDirection = Direction.Left;
                 else _botDirection = Direction.Left;
 
-                _state.Snake1.AddRange(new[] { new Position(10, 15), new Position(9, 15), new Position(8, 15) });
-                _state.Snake2.AddRange(new[] { new Position(30, 15), new Position(31, 15), new Position(32, 15) });
+                // === ИСПРАВЛЕНО: Динамический расчет стартовых точек змеек ===
+                int spawnY = _gridHeight / 2;
+                int spawnX1 = _gridWidth / 4;
+                int spawnX2 = (_gridWidth * 3) / 4;
 
+                _state.Snake1.Clear();
+                _state.Snake2.Clear();
+
+                _state.Snake1.AddRange(new[] { new Position(spawnX1, spawnY), new Position(spawnX1 - 1, spawnY), new Position(spawnX1 - 2, spawnY) });
+                _state.Snake2.AddRange(new[] { new Position(spawnX2, spawnY), new Position(spawnX2 + 1, spawnY), new Position(spawnX2 + 2, spawnY) });
+
+                if (_player1 != null) _player1.IsReady = false;
+                if (!_isBotMatch && _player2 != null) _player2.IsReady = false;
+                _state.IsPlayer1Ready = false;
+                _state.IsPlayer2Ready = false;
                 _state.Status = GameStatus.Countdown;
                 _ = RunCountdownAsync();
             }
@@ -232,7 +350,6 @@ namespace Snake.Server
             CheckAndSpawnFood(FoodType.Gold, _maxGoldFood, _goldFoodSpawnDelay, ref _lastGoldEatTime);
             CheckAndSpawnFood(FoodType.Purple, _maxPurpleFood, _purpleFoodSpawnDelay, ref _lastPurpleEatTime);
 
-            // Если играем с ботом - заставляем его вычислить ход перед движением
             if (_isBotMatch) CalculateBotMove();
 
             Position nextHead1 = GetNextHeadPosition(_state.Snake1[0], _player1.CurrentDirection);
@@ -255,26 +372,21 @@ namespace Snake.Server
             ApplyMovement(_state.Snake2, nextHead2, ref _p2PendingGrowth);
         }
 
-        // === ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ БОТА ===
         private void CalculateBotMove()
         {
             if (_state.Snake2.Count == 0 || _state.Food.Count == 0) return;
 
             var head = _state.Snake2[0];
-
-            // Ищем первую попавшуюся не фиолетовую еду, или хотя бы любую
             var targetFood = _state.Food.FirstOrDefault(f => f.Type != FoodType.Purple) ?? _state.Food[0];
             Position target = targetFood.Position;
 
             var possibleMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
 
-            // Бот не может развернуться на 180 градусов
             if (_botDirection == Direction.Up) possibleMoves.Remove(Direction.Down);
             if (_botDirection == Direction.Down) possibleMoves.Remove(Direction.Up);
             if (_botDirection == Direction.Left) possibleMoves.Remove(Direction.Right);
             if (_botDirection == Direction.Right) possibleMoves.Remove(Direction.Left);
 
-            // Сортируем возможные ходы по близости к цели (Жадный алгоритм)
             possibleMoves.Sort((a, b) =>
             {
                 var posA = GetNextHeadPosition(head, a);
@@ -284,7 +396,6 @@ namespace Snake.Server
                 return distA.CompareTo(distB);
             });
 
-            // Выбираем первый ход, который не приводит к смерти
             foreach (var move in possibleMoves)
             {
                 var nextPos = GetNextHeadPosition(head, move);
@@ -294,9 +405,7 @@ namespace Snake.Server
                     return;
                 }
             }
-            // Если все пути ведут к смерти - бот сохраняет направление и разбивается
         }
-        // ===================================
 
         private Position GetNextHeadPosition(Position currentHead, Direction dir)
         {
@@ -313,7 +422,7 @@ namespace Snake.Server
 
         private bool IsCollision(Position nextHead, List<Position> myBody, List<Position> enemyBody)
         {
-            if (nextHead.X < 0 || nextHead.X >= GridWidth || nextHead.Y < 0 || nextHead.Y >= GridHeight) return true;
+            if (nextHead.X < 0 || nextHead.X >= _gridWidth || nextHead.Y < 0 || nextHead.Y >= _gridHeight) return true;
             for (int i = 0; i < myBody.Count - 1; i++) if (myBody[i].X == nextHead.X && myBody[i].Y == nextHead.Y) return true;
             foreach (var part in enemyBody) if (part.X == nextHead.X && part.Y == nextHead.Y) return true;
             return false;
@@ -384,7 +493,7 @@ namespace Snake.Server
             Position newFood;
             while (true)
             {
-                newFood = new Position(_random.Next(0, GridWidth), _random.Next(0, GridHeight));
+                newFood = new Position(_random.Next(0, _gridWidth), _random.Next(0, _gridHeight));
                 bool inSnake1 = _state.Snake1.Exists(p => p.X == newFood.X && p.Y == newFood.Y);
                 bool inSnake2 = _state.Snake2.Exists(p => p.X == newFood.X && p.Y == newFood.Y);
                 bool inFood = _state.Food.Exists(f => f.Position.X == newFood.X && f.Position.Y == newFood.Y);
@@ -400,8 +509,22 @@ namespace Snake.Server
             _state.Message = message;
             _state.Status = GameStatus.GameOver;
 
-            if (_player1 != null) _manager.Auth.UpdateMaxScore(_player1.Name, _state.Snake1.Count);
-            if (!_isBotMatch && _player2 != null) _manager.Auth.UpdateMaxScore(_player2.Name, _state.Snake2.Count);
+            // Запись рекордов происходит по постоянному свойству Login, а не Name!
+            if (_player1 != null)
+            {
+                _manager.Auth.UpdateMaxScore(_player1.Login, _state.Snake1.Count);
+                _state.Player1Record = _manager.Auth.GetUserRecord(_player1.Login);
+            }
+
+            if (!_isBotMatch && _player2 != null)
+            {
+                _manager.Auth.UpdateMaxScore(_player2.Login, _state.Snake2.Count);
+                _state.Player2Record = _manager.Auth.GetUserRecord(_player2.Login);
+            }
+            else if (_isBotMatch)
+            {
+                _state.Player2Record = _state.Snake2.Count;
+            }
         }
     }
 }

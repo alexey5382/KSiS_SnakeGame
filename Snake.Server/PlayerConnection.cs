@@ -24,12 +24,19 @@ namespace Snake.Server
         public int SlotId { get; }
         public bool IsReady { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
-        public string Name { get; set; } = string.Empty;
+
+        // === РАЗДЕЛЕНИЕ ЛОГИНА И ИМЕНИ ===
+        public string Login { get; private set; } = string.Empty; // Навсегда привязан к аккаунту
+        public string Name { get; set; } = string.Empty;          // Временное имя в игре
+
         public string RequestedTargetId { get; set; }
         public bool IsHost { get; set; }
 
         public bool IsAuthenticated { get; set; } = false;
         public string AuthMessage { get; set; } = "Пожалуйста, авторизуйтесь.";
+
+        public GameSettingsConfig PendingSettings { get; set; } = null;
+        public string CustomLobbyName { get; set; }
 
         public PlayerConnection(TcpClient client, Direction startDirection, int slotId, AuthManager authManager)
         {
@@ -42,7 +49,6 @@ namespace Snake.Server
             _reader = new StreamReader(stream);
             _writer = new StreamWriter(stream) { AutoFlush = true };
 
-            // === ЛОГ: Подключение ===
             Console.WriteLine($"[ПОДКЛЮЧЕНИЕ] Принято новое соединение. Выдан ID: {Id.Substring(0, 8)}...");
         }
 
@@ -62,12 +68,12 @@ namespace Snake.Server
                             {
                                 if (_authManager.Login(input.PlayerName, input.Password, out string msg))
                                 {
-                                    Name = input.PlayerName;
+                                    Login = input.PlayerName; // Запоминаем логин как фундамент
+                                    Name = input.PlayerName;  // Имя по умолчанию равно логину
                                     IsAuthenticated = true;
                                     AuthMessage = msg;
 
-                                    // === ЛОГ: Успешная авторизация ===
-                                    Console.WriteLine($"[АВТОРИЗАЦИЯ] Игрок '{Name}' успешно вошел в аккаунт.");
+                                    Console.WriteLine($"[АВТОРИЗАЦИЯ] Пользователь '{Login}' вошел в аккаунт.");
                                 }
                                 else AuthMessage = msg;
                             }
@@ -76,9 +82,7 @@ namespace Snake.Server
                                 if (_authManager.Register(input.PlayerName, input.Password, out string msg))
                                 {
                                     AuthMessage = msg;
-
-                                    // === ЛОГ: Регистрация ===
-                                    Console.WriteLine($"[РЕГИСТРАЦИЯ] Создан новый пользователь: '{input.PlayerName}'.");
+                                    Console.WriteLine($"[РЕГИСТРАЦИЯ] Создан новый аккаунт: '{input.PlayerName}'.");
                                 }
                                 else AuthMessage = msg;
                             }
@@ -87,56 +91,57 @@ namespace Snake.Server
                                 if (input.Action == ActionType.CreateLobby)
                                 {
                                     IsHost = true;
-                                    Console.WriteLine($"[ЛОББИ] Игрок '{Name}' создал новую комнату.");
+                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' создал новую комнату.");
                                 }
                                 else if (input.Action == ActionType.JoinLobby)
                                 {
                                     RequestedTargetId = input.TargetId;
-                                    Console.WriteLine($"[ЛОББИ] Игрок '{Name}' пытается подключиться к {input.TargetId}.");
+                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' пытается подключиться к {input.TargetId}.");
                                 }
-                                else if (input.Action == ActionType.Ready)
-                                {
-                                    IsReady = true;
-                                }
-                                else if (input.Action == ActionType.Restart)
-                                {
-                                    WantsToRestart = true;
-                                }
+                                else if (input.Action == ActionType.Ready) IsReady = true;
+                                else if (input.Action == ActionType.Restart) WantsToRestart = true;
                                 else if (input.Action == ActionType.LeaveRoom)
                                 {
                                     WantsToLeaveRoom = true;
-
-                                    // === ЛОГ: Выход из игры / лобби ===
-                                    Console.WriteLine($"[ВЫХОД ИЗ ИГРЫ] Игрок '{Name}' покинул лобби или сдался.");
+                                    Console.WriteLine($"[ВЫХОД] Пользователь '{Login}' покинул лобби или сдался.");
                                 }
                                 else if (input.Action == ActionType.Move)
                                 {
                                     if (!IsOpposite(CurrentDirection, input.Direction)) CurrentDirection = input.Direction;
                                 }
+                                else if (input.Action == ActionType.UpdateInfo)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(input.NewPlayerName)) Name = input.NewPlayerName;
+                                    if (IsHost && !string.IsNullOrWhiteSpace(input.LobbyName)) CustomLobbyName = input.LobbyName;
+
+                                    Console.WriteLine($"[НАСТРОЙКИ] Пользователь '{Login}' изменил имя в игре на '{Name}'.");
+                                }
+                                else if (input.Action == ActionType.UpdateSettings && IsHost)
+                                {
+                                    PendingSettings = input.NewSettings;
+                                    Console.WriteLine($"[НАСТРОЙКИ] Пользователь '{Login}' изменил параметры матча.");
+                                }
                             }
                         }
                     }
-                    else
-                    {
-                        // Если stream вернул null, значит клиент закрыл соединение
-                        break;
-                    }
+                    else break;
                 }
             }
-            catch
-            {
-                // Игнорируем ошибки сети при резком обрыве (например, выдернули кабель)
-            }
+            catch { /* Игнорируем резкий обрыв связи */ }
             finally
             {
-                // Этот блок сработает ВСЕГДА: и при нормальном выходе, и при ошибке сети
                 IsConnected = false;
 
-                // === ЛОГ: Выход из аккаунта / Отключение ===
                 if (IsAuthenticated)
-                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Игрок '{Name}' вышел из аккаунта / разорвал соединение.");
+                {
+                    // === КРИТИЧЕСКИ ВАЖНО: Освобождаем логин из онлайна ===
+                    _authManager.LogoutUser(Login);
+                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Пользователь '{Login}' вышел из сети.");
+                }
                 else
-                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Неавторизованный клиент (ID: {Id.Substring(0, 8)}...) отключился.");
+                {
+                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Неавторизованный клиент отключился.");
+                }
             }
         }
 

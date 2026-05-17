@@ -56,32 +56,56 @@ namespace Snake.Shared.Models
         public int CountdownValue { get; set; }
         public int MatchTimer { get; set; }
 
+        public string LobbyName { get; set; } = string.Empty;
         public string Player1Name { get; set; } = string.Empty;
         public string Player2Name { get; set; } = string.Empty;
 
         public bool IsPlayer1Ready { get; set; }
         public bool IsPlayer2Ready { get; set; }
+        public int Player1Record { get; set; }
+        public int Player2Record { get; set; }
 
         public List<Position> Snake1 { get; set; } = new List<Position>();
         public List<Position> Snake2 { get; set; } = new List<Position>();
-
-        // ОБНОВЛЕНО: Теперь список хранит объекты FoodItem, а не просто координаты
         public List<FoodItem> Food { get; set; } = new List<FoodItem>();
 
         public bool IsGameOver { get; set; }
         public string Message { get; set; } = string.Empty;
         public List<PlayerInfo> AvailablePlayers { get; set; } = new List<PlayerInfo>();
         public List<LeaderboardEntry> TopPlayers { get; set; } = new List<LeaderboardEntry>();
+
+        // НОВОЕ: Текущие настройки комнаты
+        public GameSettingsConfig Settings { get; set; } = new GameSettingsConfig();
+    }
+    public class GameSettingsConfig
+    {
+        public int GridWidth { get; set; } = 40;
+        public int GridHeight { get; set; } = 30;
+        public double Speed { get; set; } = 4.0;
+
+        public int NormalFoodCount { get; set; } = 3;
+        public int NormalFoodEffect { get; set; } = 1;
+        public int NormalFoodDelay { get; set; } = 0;
+
+        public int GoldFoodCount { get; set; } = 1;
+        public int GoldFoodEffect { get; set; } = 3;
+        public int GoldFoodDelay { get; set; } = 10;
+
+        public int PurpleFoodCount { get; set; } = 2;
+        public int PurpleFoodEffect { get; set; } = -1;
+        public int PurpleFoodDelay { get; set; } = 5;
     }
 }
 
 namespace Snake.Shared.Networking
 {
     using Snake.Shared.Enums;
+    using Snake.Shared.Models; // Для доступа к GameSettingsConfig
 
     public enum ActionType
     {
-        Move, Restart, Ready, CreateLobby, JoinLobby, LeaveRoom, Login, Register
+        Move, Restart, Ready, CreateLobby, JoinLobby, LeaveRoom, Login, Register, UpdateInfo,
+        UpdateSettings // НОВОЕ: Действие для изменения настроек
     }
 
     public class InputUpdate
@@ -91,5 +115,10 @@ namespace Snake.Shared.Networking
         public string PlayerName { get; set; }
         public string Password { get; set; }
         public string TargetId { get; set; }
+        public string NewPlayerName { get; set; }
+        public string LobbyName { get; set; }
+
+        // НОВОЕ: Пакет с настройками
+        public GameSettingsConfig NewSettings { get; set; }
     }
 }

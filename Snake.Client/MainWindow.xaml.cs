@@ -16,12 +16,11 @@ namespace Snake.Client
     {
         private readonly NetworkClient _networkClient;
 
-        private const int GridWidth = 40;
-        private const int GridHeight = 30;
+        private int _gridWidth = 40;
+        private int _gridHeight = 30;
         private int _cellSize = 15;
         private bool _amIPlayer1 = false;
 
-        // === ПЕРЕМЕННЫЕ ДЛЯ ЦВЕТОВ ИЗ ПАЛИТРЫ ===
         private Brush _colorSnake1;
         private Brush _colorSnake2;
         private Brush _colorFoodNormal;
@@ -30,24 +29,28 @@ namespace Snake.Client
         private Brush _colorTextSuccess;
         private Brush _colorTextError;
         private Brush _colorTextInfo;
+        private Brush _colorTextSecondary;
 
         public MainWindow()
         {
             InitializeComponent();
-
-            // Загружаем цвета из нашей XAML-палитры в C# переменные
             LoadPalette();
 
             _networkClient = new NetworkClient();
             _networkClient.OnStateReceived += RenderGameState;
+
             _networkClient.OnDisconnected += msg => Dispatcher.Invoke(() =>
             {
-                StatusText.Text = msg;
-                StatusText.Foreground = _colorTextError;
-                RestartBtn.Content = "Переподключить";
-                RestartBtn.IsEnabled = true;
+                GlobalStatusText.Text = msg;
+                GlobalStatusText.Foreground = _colorTextError;
                 GameCanvas.Children.Clear();
-                LeaderboardPanel.Visibility = Visibility.Collapsed;
+
+                AuthPanel.Visibility = Visibility.Visible;
+                MainMenuPanel.Visibility = Visibility.Collapsed;
+                RoomLobbyPanel.Visibility = Visibility.Collapsed;
+                GamePanel.Visibility = Visibility.Collapsed;
+                SettingsPanel.Visibility = Visibility.Collapsed;
+                StatsPanel.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -62,6 +65,7 @@ namespace Snake.Client
             _colorTextSuccess = (Brush)FindResource("TextSuccess");
             _colorTextError = (Brush)FindResource("TextError");
             _colorTextInfo = (Brush)FindResource("TextInfo");
+            _colorTextSecondary = (Brush)FindResource("TextSecondary");
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -70,68 +74,61 @@ namespace Snake.Client
 
             MainMenuPanel.Visibility = Visibility.Collapsed;
             RoomLobbyPanel.Visibility = Visibility.Collapsed;
-            CountdownPanel.Visibility = Visibility.Collapsed;
-            HostWaitingPanel.Visibility = Visibility.Collapsed;
-            LeaderboardPanel.Visibility = Visibility.Collapsed;
-            AuthPanel.Visibility = Visibility.Visible;
+            GamePanel.Visibility = Visibility.Collapsed;
+            SettingsPanel.Visibility = Visibility.Collapsed;
+            StatsPanel.Visibility = Visibility.Collapsed;
 
+            AuthPanel.Visibility = Visibility.Visible;
+            GlobalStatusText.Text = "Инициализация...";
+
+            await Task.Delay(100);
             await ConnectToServer();
         }
 
         private void CalculateDynamicScale()
         {
             double targetCanvasHeight = SystemParameters.PrimaryScreenHeight / 2.0;
-            _cellSize = (int)(targetCanvasHeight / GridHeight);
-            if (_cellSize < 5) _cellSize = 10;
+            if (targetCanvasHeight <= 0) targetCanvasHeight = 400;
 
-            GameCanvas.Width = GridWidth * _cellSize;
-            GameCanvas.Height = GridHeight * _cellSize;
+            _cellSize = (int)(targetCanvasHeight / _gridHeight);
+            if (_cellSize < 10) _cellSize = 15;
+
+            GameCanvas.Width = _gridWidth * _cellSize;
+            GameCanvas.Height = _gridHeight * _cellSize;
             GameBorder.Width = GameCanvas.Width + 4;
             GameBorder.Height = GameCanvas.Height + 4;
-        }
 
-        private void RegisterBtn_Click(object sender, RoutedEventArgs e)
-        {
-            string login = LoginInput.Text.Trim();
-            string password = PasswordInput.Password;
+            this.Width = 220 + 20 + GameBorder.Width + 40;
+            this.Height = GameBorder.Height + 160;
 
-            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
-            {
-                AuthMessageText.Foreground = _colorTextError;
-                AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
-                return;
-            }
-
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Register, PlayerName = login, Password = password });
-        }
-
-        private void LoginBtn_Click(object sender, RoutedEventArgs e)
-        {
-            string login = LoginInput.Text.Trim();
-            string password = PasswordInput.Password;
-
-            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
-            {
-                AuthMessageText.Foreground = _colorTextError;
-                AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
-                return;
-            }
-
-            PlayerNameInput.Text = login;
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Login, PlayerName = login, Password = password });
+            this.WindowStartupLocation = WindowStartupLocation.Manual;
+            this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
+            this.Top = (SystemParameters.PrimaryScreenHeight - this.Height) / 2;
         }
 
         private async Task ConnectToServer()
         {
-            StatusText.Text = "Поиск сервера 127.0.0.1:5000...";
-            StatusText.Foreground = (Brush)FindResource("TextPrimary");
-            RestartBtn.IsEnabled = false;
+            GlobalStatusText.Text = "Поиск сервера 127.0.0.1:5000...";
+            GlobalStatusText.Foreground = _colorTextSecondary;
 
-            bool isConnected = await _networkClient.ConnectAsync("127.0.0.1", 5000);
-            if (isConnected)
+            try
             {
-                StatusText.Text = "Соединение установлено. Пожалуйста, авторизуйтесь.";
-                StatusText.Foreground = _colorTextInfo;
+                bool isConnected = await _networkClient.ConnectAsync("127.0.0.1", 5000);
+                if (isConnected)
+                {
+                    GlobalStatusText.Text = "Соединение установлено. Пожалуйста, авторизуйтесь.";
+                    GlobalStatusText.Foreground = _colorTextInfo;
+                }
+                else
+                {
+                    GlobalStatusText.Text = "Сервер недоступен.";
+                    GlobalStatusText.Foreground = _colorTextError;
+                }
+            }
+            catch
+            {
+                GlobalStatusText.Text = "Ошибка сети: Сервер выключен.";
+                GlobalStatusText.Foreground = _colorTextError;
             }
         }
 
@@ -139,12 +136,11 @@ namespace Snake.Client
         {
             if (e.Key == Key.Escape)
             {
-                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.LeaveRoom });
+                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Restart });
                 return;
             }
 
-            if (MainMenuPanel.Visibility == Visibility.Visible || CountdownPanel.Visibility == Visibility.Visible || RoomLobbyPanel.Visibility == Visibility.Visible || AuthPanel.Visibility == Visibility.Visible)
-                return;
+            if (GamePanel.Visibility != Visibility.Visible) return;
 
             Direction? dir = e.Key switch
             {
@@ -162,130 +158,198 @@ namespace Snake.Client
         {
             Dispatcher.Invoke(() =>
             {
-                if (PlayerNameInput.Text == state.Player1Name) _amIPlayer1 = true;
-                else if (PlayerNameInput.Text == state.Player2Name) _amIPlayer1 = false;
+                // ИСПРАВЛЕНИЕ: Динамический пересчет сетки при смене настроек матча
+                if (state.Settings != null && (_gridWidth != state.Settings.GridWidth || _gridHeight != state.Settings.GridHeight))
+                {
+                    _gridWidth = state.Settings.GridWidth;
+                    _gridHeight = state.Settings.GridHeight;
+                    CalculateDynamicScale();
+                }
 
-                if (state.Status == GameStatus.AuthScreen || state.Status == GameStatus.Playing || state.Status == GameStatus.Countdown)
-                {
-                    LeaderboardPanel.Visibility = Visibility.Collapsed;
-                }
-                else
-                {
-                    LeaderboardPanel.Visibility = Visibility.Visible;
-                    LeaderboardList.ItemsSource = state.TopPlayers;
-                }
+                AuthPanel.Visibility = Visibility.Collapsed;
+                MainMenuPanel.Visibility = Visibility.Collapsed;
+                RoomLobbyPanel.Visibility = Visibility.Collapsed;
+                GamePanel.Visibility = Visibility.Collapsed;
+                StatsPanel.Visibility = Visibility.Collapsed; // <== ДОБАВЬТЕ ЭТУ СТРОКУ
 
                 if (state.Status == GameStatus.AuthScreen)
                 {
                     AuthPanel.Visibility = Visibility.Visible;
-                    MainMenuPanel.Visibility = Visibility.Collapsed;
-                    HostWaitingPanel.Visibility = Visibility.Collapsed;
-                    RoomLobbyPanel.Visibility = Visibility.Collapsed;
-                    CountdownPanel.Visibility = Visibility.Collapsed;
-
-                    StatusText.Text = "Авторизация";
+                    GlobalStatusText.Text = "Авторизация";
                     AuthMessageText.Text = state.Message;
-
-                    if (state.Message.Contains("успешна") || state.Message.Contains("выполнен"))
-                        AuthMessageText.Foreground = _colorTextSuccess;
-                    else
-                        AuthMessageText.Foreground = _colorTextError;
+                    AuthMessageText.Foreground = (state.Message.Contains("успешна") || state.Message.Contains("выполнен")) ? _colorTextSuccess : _colorTextError;
                 }
                 else if (state.Status == GameStatus.MainMenu)
                 {
-                    AuthPanel.Visibility = Visibility.Collapsed;
                     MainMenuPanel.Visibility = Visibility.Visible;
-                    HostWaitingPanel.Visibility = Visibility.Collapsed;
-                    RoomLobbyPanel.Visibility = Visibility.Collapsed;
-                    CountdownPanel.Visibility = Visibility.Collapsed;
+                    GlobalStatusText.Text = "Глобальное лобби";
 
-                    StatusText.Text = "Главное меню";
-
-                    var currentList = LobbiesList.ItemsSource as List<PlayerInfo>;
-                    bool needsUpdate = currentList == null || currentList.Count != state.AvailablePlayers.Count;
-
-                    if (!needsUpdate)
+                    // Оптимизация Лидерборда: Заменяем только если изменился топ
+                    var currentTop = LeaderboardList.ItemsSource as List<LeaderboardEntry>;
+                    bool topChanged = currentTop == null || currentTop.Count != state.TopPlayers.Count;
+                    if (!topChanged)
                     {
-                        for (int i = 0; i < currentList.Count; i++)
-                        {
-                            if (currentList[i].Id != state.AvailablePlayers[i].Id || currentList[i].Name != state.AvailablePlayers[i].Name)
-                            {
-                                needsUpdate = true;
-                                break;
-                            }
-                        }
+                        for (int i = 0; i < currentTop.Count; i++)
+                            if (currentTop[i].Name != state.TopPlayers[i].Name || currentTop[i].Score != state.TopPlayers[i].Score) { topChanged = true; break; }
+                    }
+                    if (topChanged) LeaderboardList.ItemsSource = state.TopPlayers;
+
+                    var realLobbies = new List<PlayerInfo>();
+                    if (state.AvailablePlayers != null)
+                    {
+                        foreach (var lobby in state.AvailablePlayers)
+                            if (lobby.Id != "BOT_ID") realLobbies.Add(lobby);
                     }
 
-                    if (needsUpdate) LobbiesList.ItemsSource = state.AvailablePlayers;
-                }
-                else if (state.Status == GameStatus.HostWaiting)
-                {
-                    AuthPanel.Visibility = Visibility.Collapsed;
-                    MainMenuPanel.Visibility = Visibility.Collapsed;
-                    HostWaitingPanel.Visibility = Visibility.Visible;
-                    RoomLobbyPanel.Visibility = Visibility.Collapsed;
-                    CountdownPanel.Visibility = Visibility.Collapsed;
+                    if (realLobbies.Count == 0)
+                    {
+                        EmptyLobbyText.Visibility = Visibility.Visible;
+                        LobbiesList.Visibility = Visibility.Collapsed;
+                        LobbiesList.ItemsSource = null;
+                    }
+                    else
+                    {
+                        EmptyLobbyText.Visibility = Visibility.Collapsed;
+                        LobbiesList.Visibility = Visibility.Visible;
 
-                    StatusText.Text = "Создано лобби";
+                        // ИСПРАВЛЕНИЕ КНОПКИ ПРИСОЕДИНИТЬСЯ: Обновляем Source только при реальном изменении списка залов!
+                        var currentLobbies = LobbiesList.ItemsSource as List<PlayerInfo>;
+                        bool lobbiesChanged = currentLobbies == null || currentLobbies.Count != realLobbies.Count;
+                        if (!lobbiesChanged)
+                        {
+                            for (int i = 0; i < currentLobbies.Count; i++)
+                                if (currentLobbies[i].Id != realLobbies[i].Id || currentLobbies[i].Name != realLobbies[i].Name) { lobbiesChanged = true; break; }
+                        }
+                        if (lobbiesChanged) LobbiesList.ItemsSource = realLobbies;
+                    }
                 }
-                else if (state.Status == GameStatus.RoomLobby)
+                else if (state.Status == GameStatus.RoomLobby || state.Status == GameStatus.HostWaiting)
                 {
-                    AuthPanel.Visibility = Visibility.Collapsed;
-                    MainMenuPanel.Visibility = Visibility.Collapsed;
-                    HostWaitingPanel.Visibility = Visibility.Collapsed;
-                    CountdownPanel.Visibility = Visibility.Collapsed;
+                    RoomLobbyPanel.Visibility = Visibility.Visible;
+                    LobbyLeaderboardList.ItemsSource = state.TopPlayers;
+
+                    // === ИСПРАВЛЕНО: Вывод сообщений об ожидании соперника ===
+                    if (!string.IsNullOrEmpty(state.Message))
+                    {
+                        GlobalStatusText.Text = state.Message;
+                        GlobalStatusText.Foreground = _colorTextInfo; // Выделяем синим/голубым цветом
+                    }
+                    else
+                    {
+                        GlobalStatusText.Text = "Локальное лобби";
+                        GlobalStatusText.Foreground = _colorTextSecondary;
+                    }
+
+                    // Текст в полях ввода теперь сохраняется в любом случае
+                    if (!LobbyNameInput.IsFocused) LobbyNameInput.Text = state.LobbyName;
+                    if (!LobbyPlayer1Input.IsFocused) LobbyPlayer1Input.Text = state.Player1Name;
+                    if (!LobbyPlayer2Input.IsFocused) LobbyPlayer2Input.Text = state.Player2Name;
+
+                    bool isHost = _amIPlayer1;
+                    LobbyNameInput.IsReadOnly = !isHost;
+                    LobbyPlayer1Input.IsReadOnly = !isHost;
+                    LobbyPlayer2Input.IsReadOnly = isHost;
+                    SettingsBtn.Visibility = isHost ? Visibility.Visible : Visibility.Collapsed;
 
                     bool amIReady = _amIPlayer1 ? state.IsPlayer1Ready : state.IsPlayer2Ready;
-                    RoomLobbyPanel.Visibility = amIReady ? Visibility.Collapsed : Visibility.Visible;
-
-                    StatusText.Text = string.IsNullOrEmpty(state.Message) ? $"{state.Player1Name} vs {state.Player2Name}" : state.Message;
-
-                    if (RestartBtn.Content.ToString() != "Переподключить")
-                    {
-                        RestartBtn.Content = "Начать заново";
-                        RestartBtn.IsEnabled = false;
-                    }
+                    StartGameBtn.Content = amIReady ? "Ожидание..." : "Играть";
+                    StartGameBtn.IsEnabled = !amIReady;
                 }
-                else if (state.Status == GameStatus.Countdown)
+                else if (state.Status == GameStatus.Countdown || state.Status == GameStatus.Playing || state.Status == GameStatus.GameOver)
                 {
-                    CountdownPanel.Visibility = Visibility.Visible;
-                    CountdownText.Text = state.CountdownValue.ToString();
-                    StatusText.Text = $"{state.Player1Name} vs {state.Player2Name}";
-                }
-                else if (state.Status == GameStatus.Playing)
-                {
-                    CountdownPanel.Visibility = Visibility.Collapsed;
-
+                    GamePanel.Visibility = Visibility.Visible;
                     int minutes = state.MatchTimer / 60;
                     int seconds = state.MatchTimer % 60;
 
-                    StatusText.Text = $"🟦 {state.Player1Name}: {state.Snake1.Count}   |   ⏱️ {minutes:D2}:{seconds:D2}   |   🟥 {state.Player2Name}: {state.Snake2.Count}";
-                }
-                else if (state.Status == GameStatus.GameOver)
-                {
-                    StatusText.Text = $"{state.Player1Name} vs {state.Player2Name} | {state.Message}";
-
-                    if (RestartBtn.Content.ToString() != "Ожидание...")
+                    if (state.Status == GameStatus.Countdown)
                     {
-                        RestartBtn.Content = "В лобби";
-                        RestartBtn.IsEnabled = true;
+                        CountdownPanel.Visibility = Visibility.Visible;
+                        StatsPanel.Visibility = Visibility.Collapsed;
+                        CountdownText.Text = state.CountdownValue.ToString();
+                        GlobalStatusText.Text = "Приготовьтесь к старту";
+                        GlobalStatusText.Foreground = _colorTextInfo;
                     }
+                    else if (state.Status == GameStatus.Playing)
+                    {
+                        CountdownPanel.Visibility = Visibility.Collapsed;
+                        StatsPanel.Visibility = Visibility.Collapsed;
+                        GlobalStatusText.Text = "Матч активен";
+                        GlobalStatusText.Foreground = _colorTextSuccess;
+                    }
+                    else if (state.Status == GameStatus.GameOver)
+                    {
+                        CountdownPanel.Visibility = Visibility.Collapsed;
+                        bool amIReady = _amIPlayer1 ? state.IsPlayer1Ready : state.IsPlayer2Ready;
+
+                        if (amIReady)
+                        {
+                            StatsPanel.Visibility = Visibility.Collapsed;
+                            GlobalStatusText.Text = state.Message;
+                            GlobalStatusText.Foreground = _colorTextInfo;
+                        }
+                        else
+                        {
+                            // Если матч только закончился - показываем статистику
+                            StatsPanel.Visibility = Visibility.Visible;
+                            GlobalStatusText.Text = "Матч завершен";
+                            GlobalStatusText.Foreground = _colorTextSecondary;
+
+                            // Проверка состояний оппонента
+                            bool isOtherReady = _amIPlayer1 ? state.IsPlayer2Ready : state.IsPlayer1Ready;
+                            string otherName = _amIPlayer1 ? state.Player2Name : state.Player1Name;
+
+                            // ИСПРАВЛЕНИЕ БЛОКИРОВКИ И ВЫВОДА СТАТУСА:
+                            if (isOtherReady)
+                            {
+                                StatsStatusText.Text = $"Игрок {otherName} ожидает реванша!";
+                                StatsStatusText.Visibility = Visibility.Visible;
+                                StatsRematchBtn.IsEnabled = true;
+                            }
+                            else if (state.Message != null && state.Message.Contains("вышел в лобби"))
+                            {
+                                // Если соперник ушел в лобби — пишем об этом и тушим кнопку реванша
+                                StatsStatusText.Text = state.Message;
+                                StatsStatusText.Visibility = Visibility.Visible;
+                                StatsRematchBtn.IsEnabled = false;
+                            }
+                            else
+                            {
+                                StatsStatusText.Visibility = Visibility.Collapsed;
+                                StatsRematchBtn.IsEnabled = true;
+                            }
+
+                            // Заполняем данные карточки
+                            StatsTimerText.Text = $"Время матча: {minutes:D2}:{seconds:D2}";
+                            StatsP1Name.Text = state.Player1Name;
+                            StatsP1Score.Text = state.Snake1.Count.ToString();
+                            StatsP1Record.Text = state.Player1Record.ToString();
+
+                            StatsP2Name.Text = state.Player2Name;
+                            StatsP2Score.Text = state.Snake2.Count.ToString();
+                            StatsP2Record.Text = state.Player2Record.ToString();
+                        }
+                    }
+
+                    GameTimerText.Text = $"{minutes:D2}:{seconds:D2}";
+                    GamePlayer1Name.Text = state.Player1Name;
+                    GamePlayer1Score.Text = state.Snake1.Count.ToString();
+                    GamePlayer2Name.Text = state.Player2Name;
+                    GamePlayer2Score.Text = state.Snake2.Count.ToString();
                 }
 
-                GameCanvas.Children.Clear();
-                foreach (var pos in state.Snake1) DrawRect(pos, _colorSnake1);
-                foreach (var pos in state.Snake2) DrawRect(pos, _colorSnake2);
-
-                foreach (var apple in state.Food)
+                if (GamePanel.Visibility == Visibility.Visible)
                 {
-                    Brush appleColor = _colorFoodNormal;
+                    GameCanvas.Children.Clear();
+                    foreach (var pos in state.Snake1) DrawRect(pos, _colorSnake1);
+                    foreach (var pos in state.Snake2) DrawRect(pos, _colorSnake2);
 
-                    if (apple.Type == FoodType.Gold)
-                        appleColor = _colorFoodGold;
-                    else if (apple.Type == FoodType.Purple)
-                        appleColor = _colorFoodPurple;
-
-                    DrawRect(apple.Position, appleColor);
+                    foreach (var apple in state.Food)
+                    {
+                        Brush appleColor = _colorFoodNormal;
+                        if (apple.Type == FoodType.Gold) appleColor = _colorFoodGold;
+                        else if (apple.Type == FoodType.Purple) appleColor = _colorFoodPurple;
+                        DrawRect(apple.Position, appleColor);
+                    }
                 }
             });
         }
@@ -298,29 +362,34 @@ namespace Snake.Client
             GameCanvas.Children.Add(rect);
         }
 
-        private void CreateLobbyBtn_Click(object sender, RoutedEventArgs e)
-        {
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.CreateLobby, PlayerName = PlayerNameInput.Text });
-        }
+        // === ОБРАБОТЧИКИ КНОПОК ===
+        private void ExitBtn_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
 
-        private void JoinLobbyBtn_Click(object sender, RoutedEventArgs e)
+        private void RegisterBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string targetId)
+            string login = LoginInput.Text.Trim();
+            string password = PasswordInput.Password;
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
             {
-                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.JoinLobby, PlayerName = PlayerNameInput.Text, TargetId = targetId });
+                AuthMessageText.Foreground = _colorTextError;
+                AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
+                return;
             }
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Register, PlayerName = login, Password = password });
         }
 
-        private void StartGameBtn_Click(object sender, RoutedEventArgs e)
+        private void LoginBtn_Click(object sender, RoutedEventArgs e)
         {
-            RoomLobbyPanel.Visibility = Visibility.Collapsed;
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Ready });
-            this.Focus();
-        }
-
-        private void LeaveRoomBtn_Click(object sender, RoutedEventArgs e)
-        {
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.LeaveRoom });
+            string login = LoginInput.Text.Trim();
+            string password = PasswordInput.Password;
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+            {
+                AuthMessageText.Foreground = _colorTextError;
+                AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(PlayerNameInput.Text)) PlayerNameInput.Text = login;
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Login, PlayerName = login, Password = password });
         }
 
         private void LogoutBtn_Click(object sender, RoutedEventArgs e)
@@ -330,22 +399,118 @@ namespace Snake.Client
             _ = ConnectToServer();
         }
 
-        private async void RestartBtn_Click(object sender, RoutedEventArgs e)
+        private void CreateLobbyBtn_Click(object sender, RoutedEventArgs e)
         {
-            RestartBtn.IsEnabled = false;
-            if (RestartBtn.Content.ToString() == "Переподключить")
+            _amIPlayer1 = true; // ЖЕСТКАЯ ФИКСАЦИЯ РОЛИ ХОСТА
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.CreateLobby, PlayerName = PlayerNameInput.Text });
+        }
+
+        private void JoinLobbyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag != null)
             {
-                RestartBtn.Content = "Ожидание...";
-                await ConnectToServer();
-            }
-            else
-            {
-                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Restart });
-                RestartBtn.Content = "Ожидание...";
-                this.Focus();
+                _amIPlayer1 = false; // ЖЕСТКАЯ ФИКСАЦИЯ РОЛИ ГОСТЯ
+                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.JoinLobby, PlayerName = PlayerNameInput.Text, TargetId = btn.Tag.ToString() });
             }
         }
 
-        private void ExitBtn_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+        private void PlayWithBotBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _amIPlayer1 = true; // ПРОТИВ БОТА МЫ ВСЕГДА ХОСТ (ИГРОК 1)
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.JoinLobby, PlayerName = PlayerNameInput.Text, TargetId = "BOT_ID" });
+        }
+
+        private void StartGameBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Ready });
+            this.Focus();
+        }
+
+        private void LeaveRoomBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (GamePanel.Visibility == Visibility.Visible)
+                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Restart });
+            else
+                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.LeaveRoom });
+        }
+
+        private void StatsLobbyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Restart });
+        }
+
+        private void StatsRematchBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Ready });
+        }
+
+        private void LobbyInfo_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (RoomLobbyPanel.Visibility != Visibility.Visible) return;
+            string newName = _amIPlayer1 ? LobbyPlayer1Input.Text : LobbyPlayer2Input.Text;
+            string lobbyName = _amIPlayer1 ? LobbyNameInput.Text : null;
+
+            if (!string.IsNullOrWhiteSpace(newName)) PlayerNameInput.Text = newName;
+
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.UpdateInfo, NewPlayerName = newName, LobbyName = lobbyName });
+        }
+
+        private void OpenSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = Visibility.Visible;
+            RoomLobbyPanel.IsEnabled = false;
+        }
+
+        private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SetWidthInput.Text = "40";
+            SetHeightInput.Text = "30";
+            SetSpeedInput.Text = "4";
+            SetNormCount.Text = "3";
+            SetNormEffect.Text = "1";
+            SetNormDelay.Text = "0";
+            SetGoldCount.Text = "1";
+            SetGoldEffect.Text = "3";
+            SetGoldDelay.Text = "10";
+            SetPurpCount.Text = "2";
+            SetPurpEffect.Text = "-1";
+            SetPurpDelay.Text = "5";
+            SettingsErrorText.Text = string.Empty;
+        }
+
+        private void ApplySettingsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var config = new GameSettingsConfig
+                {
+                    GridWidth = int.Parse(SetWidthInput.Text),
+                    GridHeight = int.Parse(SetHeightInput.Text),
+                    Speed = double.Parse(SetSpeedInput.Text.Replace(".", ",")),
+                    NormalFoodCount = int.Parse(SetNormCount.Text),
+                    NormalFoodEffect = int.Parse(SetNormEffect.Text),
+                    NormalFoodDelay = int.Parse(SetNormDelay.Text),
+                    GoldFoodCount = int.Parse(SetGoldCount.Text),
+                    GoldFoodEffect = int.Parse(SetGoldEffect.Text),
+                    GoldFoodDelay = int.Parse(SetGoldDelay.Text),
+                    PurpleFoodCount = int.Parse(SetPurpCount.Text),
+                    PurpleFoodEffect = int.Parse(SetPurpEffect.Text),
+                    PurpleFoodDelay = int.Parse(SetPurpDelay.Text)
+                };
+
+                if (config.GridWidth < 20 || config.GridHeight < 20) throw new Exception("Минимальный размер поля 20х20.");
+                if (config.Speed <= 0) throw new Exception("Скорость должна быть больше 0.");
+
+                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.UpdateSettings, NewSettings = config });
+
+                SettingsErrorText.Text = string.Empty;
+                SettingsPanel.Visibility = Visibility.Collapsed;
+                RoomLobbyPanel.IsEnabled = true;
+            }
+            catch (Exception ex)
+            {
+                SettingsErrorText.Text = ex.Message.Contains("Input string") ? "Ошибка: Вводите только целые числа!" : ex.Message;
+            }
+        }
     }
 }
