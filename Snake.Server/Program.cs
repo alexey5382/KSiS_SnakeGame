@@ -1,45 +1,102 @@
 ﻿using Snake.Shared.Enums;
-using Snake.Shared.Models;
-using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
 
 namespace Snake.Server
 {
     class Program
     {
-        static void Main(string[] args)
+        private static readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private static readonly ServerManager _manager = new ServerManager();
+
+        static async Task Main(string[] args)
         {
             Console.Title = "Snake Game Server";
-            _ = RunServerAsync();
+
+            //методы для ожидания UDP и TCP
+            var serverTask = RunServerAsync(_cts.Token);
+            var udpTask = RunUdpDiscoveryAsync(_cts.Token);
+
 
             while (true)
             {
-                if (Console.ReadLine()?.Trim().ToLower() == "exit") Environment.Exit(0);
-            }
-        }
+                if (Console.ReadLine()?.Trim().ToLower() == "exit")
+                {
+                    Console.WriteLine("\n[СИСТЕМА] Инициализация корректного завершения работы...");
+                    //отключение всех клиентов
+                    _manager.ShutdownAll();
+                    _cts.Cancel();
 
-        static async Task RunServerAsync()
+                    break;
+                }
+            }
+            await Task.Delay(500);
+            Environment.Exit(0);
+        }
+        ///<summary>
+        ///обработка broadcast от клиента 
+        ///</summary>
+        static async Task RunUdpDiscoveryAsync(CancellationToken token)
+        {
+            try
+            {
+                using UdpClient udpListener = new UdpClient(5001);
+                udpListener.EnableBroadcast = true;
+
+                //закрывает слушателя если введен exit
+                using (token.Register(() => udpListener.Close()))
+                {
+                    while (!token.IsCancellationRequested)
+                    {
+                        var result = await udpListener.ReceiveAsync();
+                        string msg = System.Text.Encoding.UTF8.GetString(result.Buffer);
+
+                        if (msg == "SNAKE_DISCOVERY_REQUEST")
+                        {
+                            byte[] response = System.Text.Encoding.UTF8.GetBytes("SNAKE_SERVER_HERE");
+                            await udpListener.SendAsync(response, response.Length, result.RemoteEndPoint);
+                            Console.WriteLine($"[АВТОПОИСК] Сервер обнаружен клиентом {result.RemoteEndPoint.Address}");
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+        ///<summary>
+        ///бесконечный цикл ожидания игроков по TCP
+        ///</summary>
+        static async Task RunServerAsync(CancellationToken token)
         {
             TcpListener listener = new TcpListener(IPAddress.Any, 5000);
             listener.Start();
             Console.WriteLine("Сервер запущен. Ожидание подключений...");
 
-            ServerManager manager = new ServerManager();
-            _ = manager.RunGlobalLoopAsync(); // Запускаем глобальное лобби
             int i = 1;
-            while (true)
+            //закрывает слушателя если введен exit
+            using (token.Register(() => listener.Stop()))
             {
-                var client = await listener.AcceptTcpClientAsync();
+                try
+                {
+                    while (!token.IsCancellationRequested)
+                    {
+                        var client = await listener.AcceptTcpClientAsync();
 
-                // Передаем manager.Auth четвертым параметром
-                var player = new PlayerConnection(client, Direction.Right, i, manager.Auth);
-                manager.AddPlayer(player);
+                        var player = new PlayerConnection(client, Direction.Right, i, _manager);
+                        _manager.AddPlayer(player);
 
-                i++;
-                Console.WriteLine("Новый клиент подключился и ожидает авторизации.");
+                        Console.WriteLine($"[ПОДКЛЮЧЕНИЕ] Новый клиент #{i} подключился и ожидает авторизации.");
+                        i++;
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+                catch (SocketException)
+                {
+                }
             }
+            Console.WriteLine("[СИСТЕМА] Сетевой слушатель успешно остановлен.");
         }
+        
     }
 }

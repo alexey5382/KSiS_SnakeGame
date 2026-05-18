@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Snake.Server
 {
@@ -24,7 +20,9 @@ namespace Snake.Server
         {
             LoadUsers();
         }
-
+        ///<summary>
+        ///загрузка данных о пользователях из файла
+        ///</summary>
         private void LoadUsers()
         {
             if (File.Exists(_filePath))
@@ -44,7 +42,9 @@ namespace Snake.Server
                 _users = new List<UserAccount>();
             }
         }
-
+        ///<summary>
+        ///сохранение данных о пользователях в файл
+        ///</summary>
         private void SaveUsers()
         {
             lock (_lock)
@@ -53,7 +53,9 @@ namespace Snake.Server
                 File.WriteAllText(_filePath, json);
             }
         }
-
+        ///<summary>
+        ///регистрация пользователя
+        ///</summary>
         public bool Register(string login, string password, out string msg)
         {
             lock (_lock)
@@ -65,13 +67,15 @@ namespace Snake.Server
                 }
 
                 _users.Add(new UserAccount { Login = login, Password = password, MaxScore = 0 });
-                SaveUsers(); // Сохраняем изменения в файл
+                SaveUsers();
 
                 msg = "Регистрация успешна! Теперь войдите.";
                 return true;
             }
         }
-
+        ///<summary>
+        ///вход в аккаунт
+        ///</summary>
         public bool Login(string login, string password, out string msg)
         {
             lock (_lock)
@@ -95,7 +99,9 @@ namespace Snake.Server
                 return true;
             }
         }
-
+        ///<summary>
+        ///выход пользователя из аккаунта
+        ///</summary>
         public void LogoutUser(string login)
         {
             lock (_lock)
@@ -106,7 +112,9 @@ namespace Snake.Server
                 }
             }
         }
-
+        ///<summary>
+        ///обновление рекорда
+        ///</summary>
         public void UpdateMaxScore(string login, int score)
         {
             lock (_lock)
@@ -115,11 +123,13 @@ namespace Snake.Server
                 if (user != null && score > user.MaxScore)
                 {
                     user.MaxScore = score;
-                    SaveUsers(); // Сохраняем обновленный рекорд в файл
+                    SaveUsers();
                 }
             }
         }
-
+        ///<summary>
+        ///получение рекорда пользователя
+        ///</summary>
         public int GetUserRecord(string login)
         {
             lock (_lock)
@@ -128,7 +138,9 @@ namespace Snake.Server
                 return user?.MaxScore ?? 0;
             }
         }
-
+        ///<summary>
+        ///топ-5 игроков 
+        ///</summary>
         public List<Shared.Models.LeaderboardEntry> GetTopPlayers()
         {
             lock (_lock)

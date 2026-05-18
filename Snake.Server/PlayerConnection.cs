@@ -1,8 +1,5 @@
-﻿using System;
-using System.IO;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Snake.Shared.Enums;
 using Snake.Shared.Models;
 using Snake.Shared.Networking;
@@ -14,7 +11,8 @@ namespace Snake.Server
         private readonly TcpClient _client;
         private readonly StreamReader _reader;
         private readonly StreamWriter _writer;
-        private readonly AuthManager _authManager;
+
+        private readonly ServerManager _serverManager;
 
         public Direction CurrentDirection { get; set; }
         public bool IsConnected { get; private set; } = true;
@@ -25,9 +23,8 @@ namespace Snake.Server
         public bool IsReady { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
 
-        // === РАЗДЕЛЕНИЕ ЛОГИНА И ИМЕНИ ===
-        public string Login { get; private set; } = string.Empty; // Навсегда привязан к аккаунту
-        public string Name { get; set; } = string.Empty;          // Временное имя в игре
+        public string Login { get; private set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         public string RequestedTargetId { get; set; }
         public bool IsHost { get; set; }
@@ -38,88 +35,124 @@ namespace Snake.Server
         public GameSettingsConfig PendingSettings { get; set; } = null;
         public string CustomLobbyName { get; set; }
 
-        public PlayerConnection(TcpClient client, Direction startDirection, int slotId, AuthManager authManager)
+        public bool InGameEngine { get; set; } = false;
+        public event Action OnRoomStateChanged;
+        ///<summary>
+        ///создание клиента
+        ///</summary>
+        public PlayerConnection(TcpClient client, Direction startDirection, int slotId, ServerManager serverManager)
         {
             _client = client;
             CurrentDirection = startDirection;
             SlotId = slotId;
-            _authManager = authManager;
+            _serverManager = serverManager;
 
             var stream = _client.GetStream();
             _reader = new StreamReader(stream);
             _writer = new StreamWriter(stream) { AutoFlush = true };
 
             Console.WriteLine($"[ПОДКЛЮЧЕНИЕ] Принято новое соединение. Выдан ID: {Id.Substring(0, 8)}...");
+            //обновление состояния для клиента
+            _ = SendStateAsync(new GameState { Status = GameStatus.AuthScreen, Message = AuthMessage });
         }
-
+        ///<summary>
+        ///получение данных о действиях пользователя
+        ///</summary>
         public async Task ListenForInputsAsync()
         {
             try
             {
                 while (_client.Connected)
                 {
+                    //получение байтов от клиента
                     var line = await _reader.ReadLineAsync();
                     if (line != null)
                     {
                         var input = JsonSerializer.Deserialize<InputUpdate>(line);
                         if (input != null)
                         {
+                            //АВТОРИЗАЦИЯ
                             if (input.Action == ActionType.Login)
                             {
-                                if (_authManager.Login(input.PlayerName, input.Password, out string msg))
+                                if (_serverManager.Auth.Login(input.PlayerName, input.Password, out string msg))
                                 {
-                                    Login = input.PlayerName; // Запоминаем логин как фундамент
-                                    Name = input.PlayerName;  // Имя по умолчанию равно логину
+                                    Login = input.PlayerName;
+                                    Name = input.PlayerName;
                                     IsAuthenticated = true;
                                     AuthMessage = msg;
 
                                     Console.WriteLine($"[АВТОРИЗАЦИЯ] Пользователь '{Login}' вошел в аккаунт.");
+                                    //обновление состояния меню для пользователя
+                                    _serverManager.BroadcastMenuUpdate();
                                 }
-                                else AuthMessage = msg;
+                                else
+                                {
+                                    await SendStateAsync(new GameState { Status = GameStatus.AuthScreen, Message = msg });
+                                }
                             }
+                            //РЕГИСТРАЦИЯ
                             else if (input.Action == ActionType.Register)
                             {
-                                if (_authManager.Register(input.PlayerName, input.Password, out string msg))
-                                {
-                                    AuthMessage = msg;
-                                    Console.WriteLine($"[РЕГИСТРАЦИЯ] Создан новый аккаунт: '{input.PlayerName}'.");
-                                }
-                                else AuthMessage = msg;
+                                _serverManager.Auth.Register(input.PlayerName, input.Password, out string msg);
+                                await SendStateAsync(new GameState { Status = GameStatus.AuthScreen, Message = msg });
                             }
+                            //если авторизирован  успешно
                             else if (IsAuthenticated)
                             {
+                                //создание лобби
                                 if (input.Action == ActionType.CreateLobby)
                                 {
-                                    IsHost = true;
                                     Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' создал новую комнату.");
+                                    _serverManager.HandleCreateLobby(this);
                                 }
+                                //вход в лобби
                                 else if (input.Action == ActionType.JoinLobby)
                                 {
-                                    RequestedTargetId = input.TargetId;
                                     Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' пытается подключиться к {input.TargetId}.");
+                                    _serverManager.HandleJoinLobby(this, input.TargetId);
                                 }
-                                else if (input.Action == ActionType.Ready) IsReady = true;
-                                else if (input.Action == ActionType.Restart) WantsToRestart = true;
+                                //выход из лобби
                                 else if (input.Action == ActionType.LeaveRoom)
                                 {
                                     WantsToLeaveRoom = true;
                                     Console.WriteLine($"[ВЫХОД] Пользователь '{Login}' покинул лобби или сдался.");
+
+                                    if (!InGameEngine) _serverManager.HandleLeaveRoom(this);
+                                    else OnRoomStateChanged?.Invoke();
                                 }
+                                //готовность к запуску игры
+                                else if (input.Action == ActionType.Ready)
+                                {
+                                    IsReady = !IsReady;
+
+                                    if (!InGameEngine && IsHost) _serverManager.UpdateHostState(this);
+                                    else OnRoomStateChanged?.Invoke();
+                                }
+                                //рестарт игры
+                                else if (input.Action == ActionType.Restart)
+                                {
+                                    WantsToRestart = true;
+                                    OnRoomStateChanged?.Invoke();
+                                }
+                                //движение
                                 else if (input.Action == ActionType.Move)
                                 {
                                     if (!IsOpposite(CurrentDirection, input.Direction)) CurrentDirection = input.Direction;
                                 }
+                                //обновление информации
                                 else if (input.Action == ActionType.UpdateInfo)
                                 {
                                     if (!string.IsNullOrWhiteSpace(input.NewPlayerName)) Name = input.NewPlayerName;
                                     if (IsHost && !string.IsNullOrWhiteSpace(input.LobbyName)) CustomLobbyName = input.LobbyName;
 
-                                    Console.WriteLine($"[НАСТРОЙКИ] Пользователь '{Login}' изменил имя в игре на '{Name}'.");
+                                    if (!InGameEngine && IsHost) _serverManager.UpdateHostState(this);
+                                    else OnRoomStateChanged?.Invoke();
                                 }
                                 else if (input.Action == ActionType.UpdateSettings && IsHost)
                                 {
                                     PendingSettings = input.NewSettings;
-                                    Console.WriteLine($"[НАСТРОЙКИ] Пользователь '{Login}' изменил параметры матча.");
+                                    if (!InGameEngine && IsHost) _serverManager.UpdateHostState(this);
+                                    else OnRoomStateChanged?.Invoke();
                                 }
                             }
                         }
@@ -127,24 +160,25 @@ namespace Snake.Server
                     else break;
                 }
             }
-            catch { /* Игнорируем резкий обрыв связи */ }
+            catch { }
             finally
             {
                 IsConnected = false;
 
                 if (IsAuthenticated)
                 {
-                    // === КРИТИЧЕСКИ ВАЖНО: Освобождаем логин из онлайна ===
-                    _authManager.LogoutUser(Login);
+                    _serverManager.Auth.LogoutUser(Login);
                     Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Пользователь '{Login}' вышел из сети.");
                 }
-                else
-                {
-                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Неавторизованный клиент отключился.");
-                }
+
+                // Сообщаем о дисконнекте нужной инстанции
+                if (!InGameEngine) _serverManager.HandleDisconnect(this);
+                else OnRoomStateChanged?.Invoke();
             }
         }
-
+        ///<summary>
+        ///отправление состояния игры пользователям
+        ///</summary>
         public async Task SendStateAsync(GameState state)
         {
             try
@@ -162,6 +196,20 @@ namespace Snake.Server
                    (current == Direction.Down && next == Direction.Up) ||
                    (current == Direction.Left && next == Direction.Right) ||
                    (current == Direction.Right && next == Direction.Left);
+        }
+        ///<summary>
+        ///отключение пользователя сервером
+        ///</summary>
+        public void Disconnect()
+        {
+            IsConnected = false;
+            try
+            {
+                _writer?.Close();
+                _reader?.Close();
+                _client?.Close();
+            }
+            catch {  }
         }
     }
 }

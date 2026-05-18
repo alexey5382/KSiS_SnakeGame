@@ -1,10 +1,7 @@
-﻿using System.Collections.Generic;
-
-namespace Snake.Shared.Enums
+﻿namespace Snake.Shared.Enums
 {
     public enum Direction { Up, Down, Left, Right }
 
-    // НОВОЕ: Перечисление типов яблок
     public enum FoodType { Normal, Gold, Purple }
 
     public enum GameStatus
@@ -43,7 +40,6 @@ namespace Snake.Shared.Models
         public int Score { get; set; }
     }
 
-    // НОВОЕ: Класс для яблока (хранит координаты и тип)
     public class FoodItem
     {
         public Position Position { get; set; }
@@ -74,7 +70,6 @@ namespace Snake.Shared.Models
         public List<PlayerInfo> AvailablePlayers { get; set; } = new List<PlayerInfo>();
         public List<LeaderboardEntry> TopPlayers { get; set; } = new List<LeaderboardEntry>();
 
-        // НОВОЕ: Текущие настройки комнаты
         public GameSettingsConfig Settings { get; set; } = new GameSettingsConfig();
     }
     public class GameSettingsConfig
@@ -100,12 +95,20 @@ namespace Snake.Shared.Models
 namespace Snake.Shared.Networking
 {
     using Snake.Shared.Enums;
-    using Snake.Shared.Models; // Для доступа к GameSettingsConfig
+    using Snake.Shared.Models;
 
     public enum ActionType
     {
-        Move, Restart, Ready, CreateLobby, JoinLobby, LeaveRoom, Login, Register, UpdateInfo,
-        UpdateSettings // НОВОЕ: Действие для изменения настроек
+        Move, 
+        Restart, 
+        Ready, 
+        CreateLobby, 
+        JoinLobby, 
+        LeaveRoom, 
+        Login, 
+        Register, 
+        UpdateInfo,
+        UpdateSettings
     }
 
     public class InputUpdate
@@ -118,7 +121,6 @@ namespace Snake.Shared.Networking
         public string NewPlayerName { get; set; }
         public string LobbyName { get; set; }
 
-        // НОВОЕ: Пакет с настройками
         public GameSettingsConfig NewSettings { get; set; }
     }
 }

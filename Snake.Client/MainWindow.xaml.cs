@@ -6,9 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Snake.Client
 {
@@ -53,7 +52,9 @@ namespace Snake.Client
                 StatsPanel.Visibility = Visibility.Collapsed;
             });
         }
-
+        ///<summary>
+        ///загрузка цветов
+        ///</summary>
         private void LoadPalette()
         {
             _colorSnake1 = (Brush)FindResource("Snake1Color");
@@ -84,7 +85,9 @@ namespace Snake.Client
             await Task.Delay(100);
             await ConnectToServer();
         }
-
+        ///<summary>
+        ///расчет размера окна
+        ///</summary>
         private void CalculateDynamicScale()
         {
             double targetCanvasHeight = SystemParameters.PrimaryScreenHeight / 2.0;
@@ -105,18 +108,32 @@ namespace Snake.Client
             this.Left = (SystemParameters.PrimaryScreenWidth - this.Width) / 2;
             this.Top = (SystemParameters.PrimaryScreenHeight - this.Height) / 2;
         }
-
+        ///<summary>
+        ///обработка адреса и подключение к серверу
+        ///</summary>
         private async Task ConnectToServer()
         {
-            GlobalStatusText.Text = "Поиск сервера 127.0.0.1:5000...";
+            GlobalStatusText.Text = "Поиск сервера в локальной сети...";
             GlobalStatusText.Foreground = _colorTextSecondary;
+
+            string serverIp = await _networkClient.DiscoverServerAsync();
+
+            if (string.IsNullOrEmpty(serverIp))
+            {
+                serverIp = "127.0.0.1";
+                GlobalStatusText.Text = "Сервер не найден в LAN. Пробуем 127.0.0.1...";
+            }
+            else
+            {
+                GlobalStatusText.Text = $"Найден сервер: {serverIp}. Подключение...";
+            }
 
             try
             {
-                bool isConnected = await _networkClient.ConnectAsync("127.0.0.1", 5000);
+                bool isConnected = await _networkClient.ConnectAsync(serverIp, 5000);
                 if (isConnected)
                 {
-                    GlobalStatusText.Text = "Соединение установлено. Пожалуйста, авторизуйтесь.";
+                    GlobalStatusText.Text = $"Подключено к серверу ({serverIp}). Пожалуйста, авторизуйтесь.";
                     GlobalStatusText.Foreground = _colorTextInfo;
                 }
                 else
@@ -131,7 +148,9 @@ namespace Snake.Client
                 GlobalStatusText.Foreground = _colorTextError;
             }
         }
-
+        ///<summary>
+        ///обработка управления змейкой
+        ///</summary>
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
@@ -153,25 +172,27 @@ namespace Snake.Client
 
             if (dir.HasValue) _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Move, Direction = dir.Value });
         }
-
+        ///<summary>
+        ///главный метод отрисовки окна
+        ///</summary>
         private void RenderGameState(GameState state)
         {
             Dispatcher.Invoke(() =>
             {
-                // ИСПРАВЛЕНИЕ: Динамический пересчет сетки при смене настроек матча
+                //обновление настроек, если параметры были изменены
                 if (state.Settings != null && (_gridWidth != state.Settings.GridWidth || _gridHeight != state.Settings.GridHeight))
                 {
                     _gridWidth = state.Settings.GridWidth;
                     _gridHeight = state.Settings.GridHeight;
                     CalculateDynamicScale();
                 }
-
+                //скрытие неактивных панелей
                 AuthPanel.Visibility = Visibility.Collapsed;
                 MainMenuPanel.Visibility = Visibility.Collapsed;
                 RoomLobbyPanel.Visibility = Visibility.Collapsed;
                 GamePanel.Visibility = Visibility.Collapsed;
-                StatsPanel.Visibility = Visibility.Collapsed; // <== ДОБАВЬТЕ ЭТУ СТРОКУ
-
+                StatsPanel.Visibility = Visibility.Collapsed;
+                //обработка меню авторизации
                 if (state.Status == GameStatus.AuthScreen)
                 {
                     AuthPanel.Visibility = Visibility.Visible;
@@ -179,12 +200,13 @@ namespace Snake.Client
                     AuthMessageText.Text = state.Message;
                     AuthMessageText.Foreground = (state.Message.Contains("успешна") || state.Message.Contains("выполнен")) ? _colorTextSuccess : _colorTextError;
                 }
+                //обработка главного меню
                 else if (state.Status == GameStatus.MainMenu)
                 {
                     MainMenuPanel.Visibility = Visibility.Visible;
                     GlobalStatusText.Text = "Глобальное лобби";
 
-                    // Оптимизация Лидерборда: Заменяем только если изменился топ
+                    // изменение топа, только если были изменения
                     var currentTop = LeaderboardList.ItemsSource as List<LeaderboardEntry>;
                     bool topChanged = currentTop == null || currentTop.Count != state.TopPlayers.Count;
                     if (!topChanged)
@@ -200,19 +222,19 @@ namespace Snake.Client
                         foreach (var lobby in state.AvailablePlayers)
                             if (lobby.Id != "BOT_ID") realLobbies.Add(lobby);
                     }
-
+                    //обработка списка комнат
                     if (realLobbies.Count == 0)
                     {
                         EmptyLobbyText.Visibility = Visibility.Visible;
                         LobbiesList.Visibility = Visibility.Collapsed;
                         LobbiesList.ItemsSource = null;
                     }
+                    //если существуют свободные комнаты
                     else
                     {
                         EmptyLobbyText.Visibility = Visibility.Collapsed;
                         LobbiesList.Visibility = Visibility.Visible;
 
-                        // ИСПРАВЛЕНИЕ КНОПКИ ПРИСОЕДИНИТЬСЯ: Обновляем Source только при реальном изменении списка залов!
                         var currentLobbies = LobbiesList.ItemsSource as List<PlayerInfo>;
                         bool lobbiesChanged = currentLobbies == null || currentLobbies.Count != realLobbies.Count;
                         if (!lobbiesChanged)
@@ -223,16 +245,16 @@ namespace Snake.Client
                         if (lobbiesChanged) LobbiesList.ItemsSource = realLobbies;
                     }
                 }
+                //обработка локального лобби
                 else if (state.Status == GameStatus.RoomLobby || state.Status == GameStatus.HostWaiting)
                 {
                     RoomLobbyPanel.Visibility = Visibility.Visible;
                     LobbyLeaderboardList.ItemsSource = state.TopPlayers;
-
-                    // === ИСПРАВЛЕНО: Вывод сообщений об ожидании соперника ===
+                    //сообщение статуса
                     if (!string.IsNullOrEmpty(state.Message))
                     {
                         GlobalStatusText.Text = state.Message;
-                        GlobalStatusText.Foreground = _colorTextInfo; // Выделяем синим/голубым цветом
+                        GlobalStatusText.Foreground = _colorTextInfo;
                     }
                     else
                     {
@@ -240,7 +262,7 @@ namespace Snake.Client
                         GlobalStatusText.Foreground = _colorTextSecondary;
                     }
 
-                    // Текст в полях ввода теперь сохраняется в любом случае
+                    //поля ввода имени лобби и игроков
                     if (!LobbyNameInput.IsFocused) LobbyNameInput.Text = state.LobbyName;
                     if (!LobbyPlayer1Input.IsFocused) LobbyPlayer1Input.Text = state.Player1Name;
                     if (!LobbyPlayer2Input.IsFocused) LobbyPlayer2Input.Text = state.Player2Name;
@@ -252,15 +274,16 @@ namespace Snake.Client
                     SettingsBtn.Visibility = isHost ? Visibility.Visible : Visibility.Collapsed;
 
                     bool amIReady = _amIPlayer1 ? state.IsPlayer1Ready : state.IsPlayer2Ready;
-                    StartGameBtn.Content = amIReady ? "Ожидание..." : "Играть";
-                    StartGameBtn.IsEnabled = !amIReady;
+                    StartGameBtn.Content = amIReady ? "Отмена" : "Играть";
+                    StartGameBtn.IsEnabled = true;
                 }
+                //обработка игрового поля
                 else if (state.Status == GameStatus.Countdown || state.Status == GameStatus.Playing || state.Status == GameStatus.GameOver)
                 {
                     GamePanel.Visibility = Visibility.Visible;
                     int minutes = state.MatchTimer / 60;
                     int seconds = state.MatchTimer % 60;
-
+                    //обратный отсчет
                     if (state.Status == GameStatus.Countdown)
                     {
                         CountdownPanel.Visibility = Visibility.Visible;
@@ -269,6 +292,7 @@ namespace Snake.Client
                         GlobalStatusText.Text = "Приготовьтесь к старту";
                         GlobalStatusText.Foreground = _colorTextInfo;
                     }
+                    //игровой процесс
                     else if (state.Status == GameStatus.Playing)
                     {
                         CountdownPanel.Visibility = Visibility.Collapsed;
@@ -276,58 +300,55 @@ namespace Snake.Client
                         GlobalStatusText.Text = "Матч активен";
                         GlobalStatusText.Foreground = _colorTextSuccess;
                     }
+                    //завершение игры
                     else if (state.Status == GameStatus.GameOver)
                     {
+                        GamePanel.Visibility = Visibility.Visible;
+
                         CountdownPanel.Visibility = Visibility.Collapsed;
                         bool amIReady = _amIPlayer1 ? state.IsPlayer1Ready : state.IsPlayer2Ready;
 
-                        if (amIReady)
+                        StatsPanel.Visibility = Visibility.Visible;
+                        GlobalStatusText.Text = "Матч завершен";
+                        GlobalStatusText.Foreground = _colorTextSecondary;
+
+                        bool isOtherReady = _amIPlayer1 ? state.IsPlayer2Ready : state.IsPlayer1Ready;
+                        string otherName = _amIPlayer1 ? state.Player2Name : state.Player1Name;
+                        //обработка состояний готовности
+                        if (amIReady && !isOtherReady && !state.Message.Contains("вышел в лобби"))
                         {
-                            StatsPanel.Visibility = Visibility.Collapsed;
-                            GlobalStatusText.Text = state.Message;
-                            GlobalStatusText.Foreground = _colorTextInfo;
+                            StatsStatusText.Text = "Ожидание ответа соперника...";
+                            StatsStatusText.Visibility = Visibility.Visible;
+                            StatsRematchBtn.IsEnabled = false;
+                        }
+                        else if (isOtherReady)
+                        {
+                            StatsStatusText.Text = $"Игрок {otherName} ожидает реванша!";
+                            StatsStatusText.Visibility = Visibility.Visible;
+                            StatsRematchBtn.IsEnabled = true;
+                        }
+                        else if (state.Message != null && state.Message.Contains("вышел в лобби"))
+                        {
+                            StatsStatusText.Text = state.Message;
+                            StatsStatusText.Visibility = Visibility.Visible;
+                            StatsRematchBtn.IsEnabled = false;
                         }
                         else
                         {
-                            // Если матч только закончился - показываем статистику
-                            StatsPanel.Visibility = Visibility.Visible;
-                            GlobalStatusText.Text = "Матч завершен";
-                            GlobalStatusText.Foreground = _colorTextSecondary;
-
-                            // Проверка состояний оппонента
-                            bool isOtherReady = _amIPlayer1 ? state.IsPlayer2Ready : state.IsPlayer1Ready;
-                            string otherName = _amIPlayer1 ? state.Player2Name : state.Player1Name;
-
-                            // ИСПРАВЛЕНИЕ БЛОКИРОВКИ И ВЫВОДА СТАТУСА:
-                            if (isOtherReady)
-                            {
-                                StatsStatusText.Text = $"Игрок {otherName} ожидает реванша!";
-                                StatsStatusText.Visibility = Visibility.Visible;
-                                StatsRematchBtn.IsEnabled = true;
-                            }
-                            else if (state.Message != null && state.Message.Contains("вышел в лобби"))
-                            {
-                                // Если соперник ушел в лобби — пишем об этом и тушим кнопку реванша
-                                StatsStatusText.Text = state.Message;
-                                StatsStatusText.Visibility = Visibility.Visible;
-                                StatsRematchBtn.IsEnabled = false;
-                            }
-                            else
-                            {
-                                StatsStatusText.Visibility = Visibility.Collapsed;
-                                StatsRematchBtn.IsEnabled = true;
-                            }
-
-                            // Заполняем данные карточки
-                            StatsTimerText.Text = $"Время матча: {minutes:D2}:{seconds:D2}";
-                            StatsP1Name.Text = state.Player1Name;
-                            StatsP1Score.Text = state.Snake1.Count.ToString();
-                            StatsP1Record.Text = state.Player1Record.ToString();
-
-                            StatsP2Name.Text = state.Player2Name;
-                            StatsP2Score.Text = state.Snake2.Count.ToString();
-                            StatsP2Record.Text = state.Player2Record.ToString();
+                            StatsStatusText.Text = state.Message;
+                            StatsStatusText.Visibility = Visibility.Visible;
+                            StatsRematchBtn.IsEnabled = true;
                         }
+
+                        // меню статистики матча
+                        StatsTimerText.Text = $"Время матча: {minutes:D2}:{seconds:D2}";
+                        StatsP1Name.Text = state.Player1Name;
+                        StatsP1Score.Text = state.Snake1.Count.ToString();
+                        StatsP1Record.Text = state.Player1Record.ToString();
+
+                        StatsP2Name.Text = state.Player2Name;
+                        StatsP2Score.Text = state.Snake2.Count.ToString();
+                        StatsP2Record.Text = state.Player2Record.ToString();
                     }
 
                     GameTimerText.Text = $"{minutes:D2}:{seconds:D2}";
@@ -336,7 +357,7 @@ namespace Snake.Client
                     GamePlayer2Name.Text = state.Player2Name;
                     GamePlayer2Score.Text = state.Snake2.Count.ToString();
                 }
-
+                //отрисовка змеек и яблок на поле
                 if (GamePanel.Visibility == Visibility.Visible)
                 {
                     GameCanvas.Children.Clear();
@@ -353,7 +374,9 @@ namespace Snake.Client
                 }
             });
         }
-
+        ///<summary>
+        ///отрисовка квадратов (яблоки, сегменты змеек)
+        ///</summary>
         private void DrawRect(Position pos, Brush color)
         {
             var rect = new Rectangle { Width = _cellSize, Height = _cellSize, Fill = color, Margin = new Thickness(1) };
@@ -362,34 +385,43 @@ namespace Snake.Client
             GameCanvas.Children.Add(rect);
         }
 
-        // === ОБРАБОТЧИКИ КНОПОК ===
-        private void ExitBtn_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
-
+        private void ExitBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _networkClient.Disconnect();
+            Application.Current.Shutdown();
+        }
         private void RegisterBtn_Click(object sender, RoutedEventArgs e)
         {
             string login = LoginInput.Text.Trim();
-            string password = PasswordInput.Password;
-            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+            string rawPassword = PasswordInput.Password;
+
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(rawPassword))
             {
                 AuthMessageText.Foreground = _colorTextError;
                 AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
                 return;
             }
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Register, PlayerName = login, Password = password });
+
+            string hashedPassword = HashPassword(rawPassword);
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Register, PlayerName = login, Password = hashedPassword });
         }
 
         private void LoginBtn_Click(object sender, RoutedEventArgs e)
         {
             string login = LoginInput.Text.Trim();
-            string password = PasswordInput.Password;
-            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+            string rawPassword = PasswordInput.Password;
+
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(rawPassword))
             {
                 AuthMessageText.Foreground = _colorTextError;
                 AuthMessageText.Text = "Логин и пароль не могут быть пустыми.";
                 return;
             }
+
             if (string.IsNullOrWhiteSpace(PlayerNameInput.Text)) PlayerNameInput.Text = login;
-            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Login, PlayerName = login, Password = password });
+
+            string hashedPassword = HashPassword(rawPassword);
+            _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Login, PlayerName = login, Password = hashedPassword });
         }
 
         private void LogoutBtn_Click(object sender, RoutedEventArgs e)
@@ -401,7 +433,7 @@ namespace Snake.Client
 
         private void CreateLobbyBtn_Click(object sender, RoutedEventArgs e)
         {
-            _amIPlayer1 = true; // ЖЕСТКАЯ ФИКСАЦИЯ РОЛИ ХОСТА
+            _amIPlayer1 = true;
             _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.CreateLobby, PlayerName = PlayerNameInput.Text });
         }
 
@@ -409,14 +441,14 @@ namespace Snake.Client
         {
             if (sender is Button btn && btn.Tag != null)
             {
-                _amIPlayer1 = false; // ЖЕСТКАЯ ФИКСАЦИЯ РОЛИ ГОСТЯ
+                _amIPlayer1 = false;
                 _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.JoinLobby, PlayerName = PlayerNameInput.Text, TargetId = btn.Tag.ToString() });
             }
         }
 
         private void PlayWithBotBtn_Click(object sender, RoutedEventArgs e)
         {
-            _amIPlayer1 = true; // ПРОТИВ БОТА МЫ ВСЕГДА ХОСТ (ИГРОК 1)
+            _amIPlayer1 = true;
             _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.JoinLobby, PlayerName = PlayerNameInput.Text, TargetId = "BOT_ID" });
         }
 
@@ -428,9 +460,6 @@ namespace Snake.Client
 
         private void LeaveRoomBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (GamePanel.Visibility == Visibility.Visible)
-                _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.Restart });
-            else
                 _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.LeaveRoom });
         }
 
@@ -454,13 +483,17 @@ namespace Snake.Client
 
             _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.UpdateInfo, NewPlayerName = newName, LobbyName = lobbyName });
         }
-
+        ///<summary>
+        ///открыть настройки параметров игры
+        ///</summary>
         private void OpenSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             SettingsPanel.Visibility = Visibility.Visible;
             RoomLobbyPanel.IsEnabled = false;
         }
-
+        ///<summary>
+        ///сброс параметров игры в настройках
+        ///</summary>
         private void ResetSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             SetWidthInput.Text = "40";
@@ -477,7 +510,9 @@ namespace Snake.Client
             SetPurpDelay.Text = "5";
             SettingsErrorText.Text = string.Empty;
         }
-
+        ///<summary>
+        ///применить параметры игры в настройках
+        ///</summary>
         private void ApplySettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -511,6 +546,32 @@ namespace Snake.Client
             {
                 SettingsErrorText.Text = ex.Message.Contains("Input string") ? "Ошибка: Вводите только целые числа!" : ex.Message;
             }
+        }
+        ///<summary>
+        ///хеширование
+        ///</summary>
+        private string HashPassword(string password)
+        {
+            if (string.IsNullOrEmpty(password)) return string.Empty;
+
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                StringBuilder builder = new StringBuilder();
+                foreach (byte b in bytes)
+                {
+                    builder.Append(b.ToString("x2"));
+                }
+                return builder.ToString();
+            }
+        }
+        ///<summary>
+        ///обработка закрытия окна клиента
+        ///</summary>
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            _networkClient.Disconnect();
+            base.OnClosing(e);
         }
     }
 }

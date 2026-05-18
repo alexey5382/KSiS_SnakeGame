@@ -1,11 +1,9 @@
-﻿using System;
+﻿using Snake.Shared.Models;
+using Snake.Shared.Networking;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Snake.Shared.Enums;
-using Snake.Shared.Models;
-using Snake.Shared.Networking;
 
 namespace Snake.Client
 {
@@ -15,11 +13,11 @@ namespace Snake.Client
         private StreamReader _reader;
         private StreamWriter _writer;
 
-        // Событие, которое срабатывает каждый раз, когда от сервера приходит новый кадр
         public event Action<GameState> OnStateReceived;
         public event Action<string> OnDisconnected;
-
-        // Теперь метод возвращает bool (успешно или нет)
+        ///<summary>
+        ///подключение к серверу по IP + TCP
+        ///</summary>
         public async Task<bool> ConnectAsync(string ip, int port)
         {
             try
@@ -32,25 +30,56 @@ namespace Snake.Client
                 _writer = new StreamWriter(stream) { AutoFlush = true };
 
                 _ = ReceiveLoopAsync();
-                return true; // Подключение удалось!
+                return true;
             }
             catch (Exception ex)
             {
-                // Вызываем событие отключения с понятным текстом
                 OnDisconnected?.Invoke("Ошибка: Сервер недоступен.");
-                return false; // Подключение не удалось!
+                return false;
             }
         }
+        ///<summary>
+        ///отправление Broadcast для поиска сервера
+        ///</summary>
+        public async Task<string> DiscoverServerAsync()
+        {
+            try
+            {
+                using var udpClient = new UdpClient();
+                udpClient.EnableBroadcast = true;
 
-        // Полностью замените старый метод на этот
+                var requestData = System.Text.Encoding.UTF8.GetBytes("SNAKE_DISCOVERY_REQUEST");
+                var endPoint = new IPEndPoint(IPAddress.Broadcast, 5001);
+                //поиск сервера
+                await udpClient.SendAsync(requestData, requestData.Length, endPoint);
+
+                var receiveTask = udpClient.ReceiveAsync();
+                if (await Task.WhenAny(receiveTask, Task.Delay(2000)) == receiveTask)
+                {
+                    var result = receiveTask.Result;
+                    string msg = System.Text.Encoding.UTF8.GetString(result.Buffer);
+
+                    if (msg == "SNAKE_SERVER_HERE")
+                    {
+                        //возвращает IP-адрес сервера
+                        return result.RemoteEndPoint.Address.ToString(); 
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        ///<summary>
+        ///отправляет данные о своих действиях серверу
+        ///</summary>
         public async Task SendInputAsync(InputUpdate input)
         {
             if (_client == null || !_client.Connected) return;
 
             try
             {
-                // Метод больше не собирает InputUpdate сам, он просто 
-                // берет готовый объект, превращает его в JSON и отправляет
                 var json = JsonSerializer.Serialize(input);
                 await _writer.WriteLineAsync(json);
             }
@@ -59,7 +88,9 @@ namespace Snake.Client
                 OnDisconnected?.Invoke("Связь с сервером потеряна.");
             }
         }
-
+        ///<summary>
+        ///бесконечное прослушивание сервера
+        ///</summary>
         private async Task ReceiveLoopAsync()
         {
             try
@@ -80,6 +111,21 @@ namespace Snake.Client
             catch
             {
                 OnDisconnected?.Invoke("Отключено от сервера.");
+            }
+        }
+        ///<summary>
+        ///отключение от сервера клиентом
+        ///</summary>
+        public void Disconnect()
+        {
+            try
+            {
+                _writer?.Close();
+                _reader?.Close();
+                _client?.Close();
+            }
+            catch
+            {
             }
         }
     }
