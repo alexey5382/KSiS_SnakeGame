@@ -111,12 +111,17 @@ namespace Snake.Client
         ///<summary>
         ///обработка адреса и подключение к серверу
         ///</summary>
-        private async Task ConnectToServer()
+        private async Task ConnectToServer(string manualIp = null)
         {
-            GlobalStatusText.Text = "Поиск сервера в локальной сети...";
+            GlobalStatusText.Text = "Поиск сервера...";
             GlobalStatusText.Foreground = _colorTextSecondary;
 
-            string serverIp = await _networkClient.DiscoverServerAsync();
+            string serverIp = manualIp;
+
+            if (string.IsNullOrWhiteSpace(serverIp))
+            {
+                serverIp = await _networkClient.DiscoverServerAsync();
+            }
 
             if (string.IsNullOrEmpty(serverIp))
             {
@@ -125,12 +130,14 @@ namespace Snake.Client
             }
             else
             {
-                GlobalStatusText.Text = $"Найден сервер: {serverIp}. Подключение...";
+                GlobalStatusText.Text = $"Подключение к: {serverIp}...";
             }
 
             try
             {
+                // Подключаемся к итоговому IP-адресу
                 bool isConnected = await _networkClient.ConnectAsync(serverIp, 5000);
+
                 if (isConnected)
                 {
                     GlobalStatusText.Text = $"Подключено к серверу ({serverIp}). Пожалуйста, авторизуйтесь.";
@@ -428,6 +435,7 @@ namespace Snake.Client
         {
             PlayerNameInput.Text = "";
             PasswordInput.Password = "";
+            _networkClient.Disconnect();
             _ = ConnectToServer();
         }
 
@@ -482,6 +490,36 @@ namespace Snake.Client
             if (!string.IsNullOrWhiteSpace(newName)) PlayerNameInput.Text = newName;
 
             _ = _networkClient.SendInputAsync(new InputUpdate { Action = ActionType.UpdateInfo, NewPlayerName = newName, LobbyName = lobbyName });
+        }
+        private void ToggleIpBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ManualIpPanel.Visibility == Visibility.Visible)
+            {
+                ManualIpPanel.Visibility = Visibility.Collapsed;
+                ToggleIpBtn.Content = "Настройки IP";
+            }
+            else
+            {
+                ManualIpPanel.Visibility = Visibility.Visible;
+                ToggleIpBtn.Content = "Скрыть IP";
+            }
+        }
+
+        private async void ReconnectServerBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _networkClient.Disconnect();
+
+            string ipToConnect = (ManualIpPanel.Visibility == Visibility.Visible && !string.IsNullOrWhiteSpace(ServerIpInput.Text))
+                ? ServerIpInput.Text.Trim()
+                : null;
+
+            await ConnectToServer(ipToConnect);
+        }
+
+        private async void ManualConnectBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _networkClient.Disconnect();
+            await ConnectToServer(ServerIpInput.Text.Trim());
         }
         ///<summary>
         ///открыть настройки параметров игры

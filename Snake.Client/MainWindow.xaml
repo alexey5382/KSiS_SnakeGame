@@ -7,30 +7,28 @@
         KeyDown="Window_KeyDown" Loaded="Window_Loaded">
 
     <Window.Resources>
-        <SolidColorBrush x:Key="AppBackground" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="OverlayBackground" Color="#D9000000"/>
-        <SolidColorBrush x:Key="CardBackground" Color="#1E1E1E"/>
-        <SolidColorBrush x:Key="InputBackground" Color="#333333"/>
-        <SolidColorBrush x:Key="CanvasBackground" Color="Black"/>
+        <SolidColorBrush x:Key="AppBackground" Color="#F4F6F8"/>
+        <SolidColorBrush x:Key="OverlayBackground" Color="#CCFFFFFF"/>
+        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="InputBackground" Color="#E9ECEF"/>
+        <SolidColorBrush x:Key="CanvasBackground" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#2D3748"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#A0AEC0"/>
+        <SolidColorBrush x:Key="TextHighlight" Color="#D69E2E"/>
+        <SolidColorBrush x:Key="TextWarning" Color="#ED8936"/>
+        <SolidColorBrush x:Key="TextSuccess" Color="#48BB78"/>
+        <SolidColorBrush x:Key="TextError" Color="#F56565"/>
+        <SolidColorBrush x:Key="TextInfo" Color="#38B2AC"/>
+        <SolidColorBrush x:Key="BorderDark" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="ButtonPrimaryBg" Color="#90CDF4"/>
+        <SolidColorBrush x:Key="ButtonSecondaryBg" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="ButtonDangerBg" Color="#FEB2B2"/>
+        <SolidColorBrush x:Key="Snake1Color" Color="#63B3ED"/>
+        <SolidColorBrush x:Key="Snake2Color" Color="#F687B3"/>
+        <SolidColorBrush x:Key="FoodNormalColor" Color="#9AE6B4"/>
+        <SolidColorBrush x:Key="FoodGoldColor" Color="#FAF089"/>
+        <SolidColorBrush x:Key="FoodPurpleColor" Color="#D6BCFA"/> 
 
-        <SolidColorBrush x:Key="TextPrimary" Color="White"/>
-        <SolidColorBrush x:Key="TextSecondary" Color="#AAAAAA"/>
-        <SolidColorBrush x:Key="TextHighlight" Color="Yellow"/>
-        <SolidColorBrush x:Key="TextWarning" Color="Orange"/>
-        <SolidColorBrush x:Key="TextSuccess" Color="LimeGreen"/>
-        <SolidColorBrush x:Key="TextError" Color="Tomato"/>
-        <SolidColorBrush x:Key="TextInfo" Color="Cyan"/>
-
-        <SolidColorBrush x:Key="BorderDark" Color="#555555"/>
-        <SolidColorBrush x:Key="ButtonPrimaryBg" Color="DodgerBlue"/>
-        <SolidColorBrush x:Key="ButtonSecondaryBg" Color="#444444"/>
-        <SolidColorBrush x:Key="ButtonDangerBg" Color="#8B0000"/>
-
-        <SolidColorBrush x:Key="Snake1Color" Color="DodgerBlue"/>
-        <SolidColorBrush x:Key="Snake2Color" Color="Crimson"/>
-        <SolidColorBrush x:Key="FoodNormalColor" Color="LimeGreen"/>
-        <SolidColorBrush x:Key="FoodGoldColor" Color="Gold"/>
-        <SolidColorBrush x:Key="FoodPurpleColor" Color="MediumPurple"/>
     </Window.Resources>
 
     <Grid Margin="10">
@@ -49,8 +47,35 @@
                         BorderThickness="0" Cursor="Hand" Click="ExitBtn_Click"/>
 
                 <Border Background="{StaticResource CardBackground}" BorderBrush="{StaticResource BorderDark}" BorderThickness="1" CornerRadius="10" 
-                        Width="320" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
-                    <StackPanel>
+                        Width="370" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
+                    <StackPanel >
+                        <Grid Margin="0,0,0,15" >
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0" x:Name="ToggleIpBtn" Content="Настройки IP" Height="30" FontSize="12" Cursor="Hand"
+                                    Background="{StaticResource ButtonSecondaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="ToggleIpBtn_Click"/>
+
+                            <Button Grid.Column="2" x:Name="ReconnectBtn" Content="🔄 Переподключиться" Height="30" FontSize="12" Cursor="Hand"
+                                    Background="{StaticResource ButtonSecondaryBg}" Foreground="{StaticResource TextInfo}" BorderThickness="0" Click="ReconnectServerBtn_Click"/>
+                        </Grid>
+
+                        <StackPanel x:Name="ManualIpPanel" Visibility="Collapsed" Margin="0,0,0,15">
+                            <TextBlock Text="IP Сервера (пусто для автопоиска)" Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,5"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="5"/>
+                                    <ColumnDefinition Width="90"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ServerIpInput" Grid.Column="0" FontSize="14" Padding="4" Background="{StaticResource InputBackground}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
+                                <Button Grid.Column="2" Content="Связать IP" Height="28" FontSize="12" Cursor="Hand" Background="{StaticResource ButtonPrimaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="ManualConnectBtn_Click"/>
+                            </Grid>
+                        </StackPanel>
+
                         <TextBlock Text="Логин" Foreground="{StaticResource TextSecondary}" FontSize="14" Margin="0,0,0,5"/>
                         <TextBox x:Name="LoginInput" FontSize="16" Padding="6" Margin="0,0,0,15" Background="{StaticResource InputBackground}" Foreground="{StaticResource TextPrimary}" BorderThickness="0"/>
 
@@ -63,10 +88,8 @@
                                 <ColumnDefinition Width="10"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="Войти" Height="35" FontSize="14" Cursor="Hand" 
-                                    Background="{StaticResource ButtonPrimaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="LoginBtn_Click"/>
-                            <Button Grid.Column="2" Content="Регистрация" Height="35" FontSize="14" Cursor="Hand" 
-                                    Background="{StaticResource ButtonSecondaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="RegisterBtn_Click"/>
+                            <Button Grid.Column="0" Content="Войти" Height="35" FontSize="14" Cursor="Hand" Background="{StaticResource ButtonPrimaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="LoginBtn_Click"/>
+                            <Button Grid.Column="2" Content="Регистрация" Height="35" FontSize="14" Cursor="Hand" Background="{StaticResource ButtonSecondaryBg}" Foreground="{StaticResource TextPrimary}" BorderThickness="0" Click="RegisterBtn_Click"/>
                         </Grid>
 
                         <TextBlock x:Name="AuthMessageText" Foreground="{StaticResource TextError}" FontSize="12" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>

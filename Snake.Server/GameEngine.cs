@@ -133,6 +133,7 @@ namespace Snake.Server
                         }
                         else
                         {
+                            Console.WriteLine($"[ИГРА] Матч в лобби '{_state.LobbyName}' начался!");
                             _state.Status = GameStatus.Playing;
                             _gameStartTime = DateTime.Now;
                             _p1PendingGrowth = 0;
@@ -148,6 +149,7 @@ namespace Snake.Server
                     }
                     else if (_state.Status == GameStatus.Playing)
                     {
+
                         if (_gameStartTime == null) _gameStartTime = DateTime.Now;
                         _state.MatchTimer = (int)(DateTime.Now - _gameStartTime.Value).TotalSeconds;
 
@@ -256,9 +258,11 @@ namespace Snake.Server
             bool p1Dead = _player1 == null || !_player1.IsConnected || p1Leave;
             bool p2Dead = !_isBotMatch && (_player2 == null || !_player2.IsConnected || p2Leave);
 
-            if (p1Dead || p2Dead)
+            if (p1Dead)
             {
+                Console.WriteLine($"[ЛОББИ] Лобби '{_state.LobbyName}' удалено (создатель вышел).");
                 _isLoopRunning = false;
+
                 if (_player1 != null) _player1.OnRoomStateChanged -= HandlePlayerInput;
                 if (_player2 != null) _player2.OnRoomStateChanged -= HandlePlayerInput;
 
@@ -269,10 +273,28 @@ namespace Snake.Server
                 _player2 = null;
                 return true;
             }
+            else if (p2Dead)
+            {
+                Console.WriteLine($"[ЛОББИ] Игрок 2 покинул лобби '{_state.LobbyName}'. Лобби снова открыто для поиска.");
+                _isLoopRunning = false;
+
+                if (_player1 != null) _player1.OnRoomStateChanged -= HandlePlayerInput;
+                if (_player2 != null) _player2.OnRoomStateChanged -= HandlePlayerInput;
+
+                _manager.ReturnToGlobalLobby(_player2);
+
+                _manager.ReturnToGlobalLobby(_player1);
+                _manager.HandleCreateLobby(_player1);
+
+                _player1 = null;
+                _player2 = null;
+                return true; 
+            }
+
             return false;
         }
         ///<summary>
-        ///проверка на досрочный выход игрока
+        ///проверка на досрочный выход игрока во время игры
         ///</summary>
         private void CheckSurrender()
         {
@@ -370,7 +392,7 @@ namespace Snake.Server
             _state.Message = message;
             _state.Status = GameStatus.GameOver;
             _isLoopRunning = false;
-
+            Console.WriteLine($"[ИГРА] Матч в лобби '{_state.LobbyName}' завершен. Исход: {message}");
             if (_player1 != null)
             {
                 _manager.Auth.UpdateMaxScore(_player1.Login, _state.Snake1.Count);

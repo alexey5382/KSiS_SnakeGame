@@ -48,26 +48,36 @@ namespace Snake.Client
                 using var udpClient = new UdpClient();
                 udpClient.EnableBroadcast = true;
 
-                var requestData = System.Text.Encoding.UTF8.GetBytes("SNAKE_DISCOVERY_REQUEST");
-                var endPoint = new IPEndPoint(IPAddress.Broadcast, 5001);
-                //поиск сервера
+                byte[] requestData = System.Text.Encoding.UTF8.GetBytes("SNAKE_DISCOVERY_REQUEST");
+
+                IPEndPoint endPoint = new IPEndPoint(IPAddress.Broadcast, 5001);
+
                 await udpClient.SendAsync(requestData, requestData.Length, endPoint);
-
+                Console.WriteLine($"[КЛИЕНТ] UDP запрос отправлен");
+                var timeoutTask = Task.Delay(3000);
                 var receiveTask = udpClient.ReceiveAsync();
-                if (await Task.WhenAny(receiveTask, Task.Delay(2000)) == receiveTask)
-                {
-                    var result = receiveTask.Result;
-                    string msg = System.Text.Encoding.UTF8.GetString(result.Buffer);
 
-                    if (msg == "SNAKE_SERVER_HERE")
+                var completedTask = await Task.WhenAny(receiveTask, timeoutTask);
+
+                if (completedTask == receiveTask)
+                {
+                    var result = await receiveTask;
+                    string response = System.Text.Encoding.UTF8.GetString(result.Buffer);
+
+                    if (response.Contains("SNAKE_SERVER_HERE"))
                     {
-                        //возвращает IP-адрес сервера
-                        return result.RemoteEndPoint.Address.ToString(); 
+                        return result.RemoteEndPoint.Address.ToString();
                     }
                 }
+                else
+                {
+                    Console.WriteLine("[КЛИЕНТ] Тайм-аут: Сервер не ответил на UDP.");
+                }
             }
-            catch { }
-
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[КЛИЕНТ] Ошибка UDP: {ex.Message}");
+            }
             return null;
         }
 

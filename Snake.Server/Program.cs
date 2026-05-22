@@ -43,19 +43,31 @@ namespace Snake.Server
                 using UdpClient udpListener = new UdpClient(5001);
                 udpListener.EnableBroadcast = true;
 
-                //закрывает слушателя если введен exit
                 using (token.Register(() => udpListener.Close()))
                 {
                     while (!token.IsCancellationRequested)
                     {
                         var result = await udpListener.ReceiveAsync();
-                        string msg = System.Text.Encoding.UTF8.GetString(result.Buffer);
+                        string msg = System.Text.Encoding.UTF8.GetString(result.Buffer).Trim();
 
                         if (msg == "SNAKE_DISCOVERY_REQUEST")
                         {
+                            Console.WriteLine($"[АВТОПОИСК] Получен UDP-запрос от клиента {result.RemoteEndPoint.Address}");
+
                             byte[] response = System.Text.Encoding.UTF8.GetBytes("SNAKE_SERVER_HERE");
-                            await udpListener.SendAsync(response, response.Length, result.RemoteEndPoint);
-                            Console.WriteLine($"[АВТОПОИСК] Сервер обнаружен клиентом {result.RemoteEndPoint.Address}");
+
+                            try
+                            {
+                                await udpListener.SendAsync(response, response.Length, result.RemoteEndPoint);
+                                var broadcastEndPoint = new IPEndPoint(IPAddress.Broadcast, result.RemoteEndPoint.Port);
+                                //await udpListener.SendAsync(response, response.Length, broadcastEndPoint);
+
+                                Console.WriteLine($"[АВТОПОИСК] Отправлен UDP-ответ клиенту {result.RemoteEndPoint.Address}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[ОШИБКА АВТОПОИСКА] Не удалось отправить ответ: {ex.Message}");
+                            }
                         }
                     }
                 }

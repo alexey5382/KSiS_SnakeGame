@@ -1,8 +1,9 @@
-﻿using System.Net.Sockets;
-using System.Text.Json;
-using Snake.Shared.Enums;
+﻿using Snake.Shared.Enums;
 using Snake.Shared.Models;
 using Snake.Shared.Networking;
+using System;
+using System.Net.Sockets;
+using System.Text.Json;
 
 namespace Snake.Server
 {
@@ -81,7 +82,7 @@ namespace Snake.Server
                                     IsAuthenticated = true;
                                     AuthMessage = msg;
 
-                                    Console.WriteLine($"[АВТОРИЗАЦИЯ] Пользователь '{Login}' вошел в аккаунт.");
+                                    Console.WriteLine($"[АВТОРИЗАЦИЯ] Пользователь '{Login}' вошел в систему.");
                                     //обновление состояния меню для пользователя
                                     _serverManager.BroadcastMenuUpdate();
                                 }
@@ -93,7 +94,8 @@ namespace Snake.Server
                             //РЕГИСТРАЦИЯ
                             else if (input.Action == ActionType.Register)
                             {
-                                _serverManager.Auth.Register(input.PlayerName, input.Password, out string msg);
+                                bool success = _serverManager.Auth.Register(input.PlayerName, input.Password, out string msg);
+                                if (success) Console.WriteLine($"[РЕГИСТРАЦИЯ] Пользователь '{input.PlayerName}' успешно зарегистрирован.");
                                 await SendStateAsync(new GameState { Status = GameStatus.AuthScreen, Message = msg });
                             }
                             //если авторизирован  успешно
@@ -102,21 +104,20 @@ namespace Snake.Server
                                 //создание лобби
                                 if (input.Action == ActionType.CreateLobby)
                                 {
-                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' создал новую комнату.");
+                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' создал лобби.");
                                     _serverManager.HandleCreateLobby(this);
                                 }
                                 //вход в лобби
                                 else if (input.Action == ActionType.JoinLobby)
                                 {
-                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' пытается подключиться к {input.TargetId}.");
+                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' вошел в лобби '{input.TargetId}'.");
                                     _serverManager.HandleJoinLobby(this, input.TargetId);
                                 }
                                 //выход из лобби
                                 else if (input.Action == ActionType.LeaveRoom)
                                 {
                                     WantsToLeaveRoom = true;
-                                    Console.WriteLine($"[ВЫХОД] Пользователь '{Login}' покинул лобби или сдался.");
-
+                                    Console.WriteLine($"[ЛОББИ] Пользователь '{Login}' покинул лобби.");
                                     if (!InGameEngine) _serverManager.HandleLeaveRoom(this);
                                     else OnRoomStateChanged?.Invoke();
                                 }
@@ -145,11 +146,16 @@ namespace Snake.Server
                                     if (!string.IsNullOrWhiteSpace(input.NewPlayerName)) Name = input.NewPlayerName;
                                     if (IsHost && !string.IsNullOrWhiteSpace(input.LobbyName)) CustomLobbyName = input.LobbyName;
 
-                                    if (!InGameEngine && IsHost) _serverManager.UpdateHostState(this);
+                                    if (!InGameEngine && IsHost)
+                                    {
+                                        _serverManager.UpdateHostState(this);
+                                        _serverManager.BroadcastMenuUpdate();
+                                    }
                                     else OnRoomStateChanged?.Invoke();
                                 }
                                 else if (input.Action == ActionType.UpdateSettings && IsHost)
                                 {
+                                    Console.WriteLine($"[НАСТРОЙКИ] Пользователь '{Login}' изменил настройки игры.");
                                     PendingSettings = input.NewSettings;
                                     if (!InGameEngine && IsHost) _serverManager.UpdateHostState(this);
                                     else OnRoomStateChanged?.Invoke();
@@ -168,9 +174,9 @@ namespace Snake.Server
                 if (IsAuthenticated)
                 {
                     _serverManager.Auth.LogoutUser(Login);
-                    Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Пользователь '{Login}' вышел из сети.");
+                    Console.WriteLine($"[АВТОРИЗАЦИЯ] Пользователь '{Login}' вышел из аккаунта.");
                 }
-
+                Console.WriteLine($"[ОТКЛЮЧЕНИЕ] Клиент {Id.Substring(0, 8)} закрыл программу и отключился.");
                 // Сообщаем о дисконнекте нужной инстанции
                 if (!InGameEngine) _serverManager.HandleDisconnect(this);
                 else OnRoomStateChanged?.Invoke();
